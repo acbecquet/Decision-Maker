@@ -1016,7 +1016,7 @@ export function formatMoney(amount: number, currency: string, locale?: string): 
 	return new Intl.NumberFormat(locale, {
 		style: 'currency',
 		currency,
-		minimumFractionDigits: 0,
+		minimumFractionDigits: whole ? 0 : 2,
 		maximumFractionDigits: whole ? 0 : 2
 	}).format(amount);
 }
