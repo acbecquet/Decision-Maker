@@ -2388,6 +2388,16 @@ describe('finalizeRoster', () => {
 		expect(() => setParticipantStatus(db, closed, people[0].id, 'rejected')).toThrow(/final/);
 		expect(() => approveAllPending(db, closed)).toThrow(/final/);
 	});
+
+	it('refuses a finalize made from a stale snapshot and keeps the first closedAt', () => {
+		const { db, event } = withThree();
+		const first = finalizeRoster(db, event, 'approve', new Date('2026-09-17T12:00:00.000Z'));
+		expect(() =>
+			finalizeRoster(db, event, 'approve', new Date('2026-09-17T13:00:00.000Z'))
+		).toThrow(/already closed/);
+		expect(getEventById(db, event.id).closedAt).toBe(first.closedAt);
+		expect(getEventById(db, event.id).rosterFinal).toBe(true);
+	});
 });
 ```
 
@@ -2416,6 +2426,8 @@ import { resolvePending } from './participants';
 /**
  * Finalizes the roster: resolves pending names, freezes the aggregates on the event,
  * and makes the close final. There is no reverse operation.
+ * The event is re-read inside the transaction so a stale caller snapshot cannot pass the
+ * guard, and the update applies only while the roster is not yet final.
  */
 export function finalizeRoster(
 	db: Db,
@@ -2423,27 +2435,30 @@ export function finalizeRoster(
 	pending: 'approve' | 'reject',
 	now = new Date()
 ): EventRow {
-	if (event.state === 'published' || event.rosterFinal) {
-		throw conflict('The event is already closed');
-	}
 	return db.transaction((tx) => {
-		resolvePending(tx, event.id, pending === 'approve' ? 'approved' : 'rejected');
-		const opts = listOptions(tx, event.id);
-		const rows = readApprovedResponses(tx, event.id);
+		const current = getEventById(tx, event.id);
+		if (current.state === 'published' || current.rosterFinal) {
+			throw conflict('The event is already closed');
+		}
+		resolvePending(tx, current.id, pending === 'approve' ? 'approved' : 'rejected');
+		const opts = listOptions(tx, current.id);
+		const rows = readApprovedResponses(tx, current.id);
 		const aggregates = aggregate(
 			opts.map((o) => ({ id: o.id, cost: o.costPerPerson })),
 			rows.map((r) => ({ ranking: r.ranking, vetoes: r.vetoes, budget: r.budget }))
 		);
-		tx.update(events)
+		const result = tx
+			.update(events)
 			.set({
 				state: 'closed',
 				rosterFinal: true,
-				closedAt: event.closedAt ?? now.toISOString(),
+				closedAt: current.closedAt ?? now.toISOString(),
 				aggregates
 			})
-			.where(eq(events.id, event.id))
+			.where(and(eq(events.id, current.id), eq(events.rosterFinal, false)))
 			.run();
-		return getEventById(tx, event.id);
+		if (result.changes === 0) throw conflict('The event is already closed');
+		return getEventById(tx, current.id);
 	});
 }
 ```
