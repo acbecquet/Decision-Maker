@@ -69,7 +69,7 @@ export function submitResponse(
 			.values({
 				id,
 				eventId: event.id,
-				displayName: input.name,
+				displayName: input.name.trim(),
 				deviceTokenHash,
 				status: opts.autoApprove ? 'approved' : 'pending',
 				createdAt: nowIso
@@ -128,7 +128,7 @@ export function listRoster(db: DbLike, eventId: string): RosterRow[] {
 	}
 	return rows.map((r) => ({
 		...r,
-		name: r.name.trim(),
+		name: r.name,
 		duplicate: (seen.get(r.name.trim().toLowerCase()) ?? 0) > 1
 	}));
 }
