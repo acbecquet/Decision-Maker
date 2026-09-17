@@ -1836,7 +1836,7 @@ export function submitResponse(
 			.values({
 				id,
 				eventId: event.id,
-				displayName: input.name,
+				displayName: input.name.trim(),
 				deviceTokenHash,
 				status: opts.autoApprove ? 'approved' : 'pending',
 				createdAt: nowIso
@@ -1886,7 +1886,11 @@ export function listRoster(db: DbLike, eventId: string): RosterRow[] {
 		.select({ id: participants.id, name: participants.displayName, status: participants.status })
 		.from(participants)
 		.where(eq(participants.eventId, eventId))
-		.orderBy(sql`lower(${participants.displayName})`, asc(participants.id))
+		.orderBy(
+			sql`lower(${participants.displayName})`,
+			asc(participants.displayName),
+			asc(participants.id)
+		)
 		.all();
 	const seen = new Map<string, number>();
 	for (const r of rows) {
