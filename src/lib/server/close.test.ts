@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { finalizeRoster } from './close';
-import { listOptions, stopSubmissions } from './events';
+import { getEventById, listOptions, stopSubmissions } from './events';
 import {
 	approveAllPending,
 	countByStatus,
@@ -61,5 +61,15 @@ describe('finalizeRoster', () => {
 		expect(() => finalizeRoster(db, closed, 'approve')).toThrow(/already closed/);
 		expect(() => setParticipantStatus(db, closed, people[0].id, 'rejected')).toThrow(/final/);
 		expect(() => approveAllPending(db, closed)).toThrow(/final/);
+	});
+
+	it('refuses a finalize made from a stale snapshot and keeps the first closedAt', () => {
+		const { db, event } = withThree();
+		const first = finalizeRoster(db, event, 'approve', new Date('2026-09-17T12:00:00.000Z'));
+		expect(() =>
+			finalizeRoster(db, event, 'approve', new Date('2026-09-17T13:00:00.000Z'))
+		).toThrow(/already closed/);
+		expect(getEventById(db, event.id).closedAt).toBe(first.closedAt);
+		expect(getEventById(db, event.id).rosterFinal).toBe(true);
 	});
 });
