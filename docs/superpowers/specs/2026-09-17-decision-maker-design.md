@@ -381,9 +381,9 @@ Expiry and deletion follow section 6.6.
 Each guarantee names where it is enforced.
 
 1. Nobody reads raw responses but the job.
-   The data layer exposes responses as write-only to the web routes.
-   The single "read all for event" function lives in the job module.
-   No API route returns a response row or an anonymized point to any caller, host included.
+   The data layer exposes responses as write-only to the web routes, with one exception: a participant can read back their own submission, and only through their own device token, so they can edit it.
+   The single "read all for event" function lives in the analysis module, and only close-time aggregation and the analysis job call it.
+   No API route returns anyone else's response row or an anonymized point to any caller, host included.
 2. Numbers appear only after the roster is final, and suppression is one shared function.
 3. Tokens are 256-bit random values from the platform's crypto, stored as SHA-256 hashes, sent in headers, never in URLs, never logged, compared in constant time.
 4. Keys travel in request bodies over HTTPS, live in memory, are redacted from logs and errors, and are never written to the database.
