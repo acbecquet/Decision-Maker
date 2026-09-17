@@ -102,12 +102,14 @@ Unit tests sit next to the file they test as `*.test.ts`. End-to-end tests live 
 ### Task 1: Scaffold the project in place
 
 **Files:**
+
 - Create (scaffolded): `package.json`, `vite.config.ts`, `tsconfig.json`, `drizzle.config.ts`, `eslint.config.js`, `prettier.config.js`, `.prettierignore`, `.npmrc`, `src/app.html`, `src/app.d.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/lib/server/db/index.ts`, `src/lib/server/db/schema.ts`, `static/robots.txt`
 - Create: `.gitattributes`, `playwright.config.ts` (replace scaffolded), `e2e/reset-db.mjs`, `README.md` (replace scaffolded), `.env.example` (replace scaffolded), `.env`
 - Modify: `.gitignore` (scaffolder overwrites it), `package.json`
 - Delete: `src/routes/demo/`, `src/lib/vitest-examples/`, `src/lib/index.ts`
 
 **Interfaces:**
+
 - Produces: the npm scripts `dev`, `build`, `start`, `check`, `lint`, `format`, `test:unit`, `test:e2e`, `db:generate` that every later task runs.
 
 - [ ] **Step 1: Run the scaffolder inside the repo**
@@ -260,7 +262,7 @@ for (const name of ['e2e.db', 'e2e.db-wal', 'e2e.db-shm']) {
 
 Replace `README.md` with:
 
-```markdown
+````markdown
 # DecisionMaker
 
 A small web app that helps a group make a decision without anyone stepping on anyone's toes.
@@ -278,6 +280,7 @@ npx playwright install chromium
 cp .env.example .env
 npm run dev
 ```
+````
 
 ## Check
 
@@ -294,7 +297,8 @@ The end-to-end suite builds the app, starts it on port 4173 with a fresh SQLite 
 
 Schema changes go in `src/lib/server/db/schema.ts`, then `npm run db:generate` writes a migration into `drizzle/`.
 Migrations run automatically when the server starts.
-```
+
+````
 
 - [ ] **Step 8: Install browsers, format, and verify**
 
@@ -305,7 +309,7 @@ npm run lint
 npm run check
 npx vitest run --passWithNoTests
 npm run build
-```
+````
 
 Expected: `lint` prints no style issues, `check` ends with `0 ERRORS 0 WARNINGS`, vitest reports no test files without failing, and `build` finishes without errors.
 
@@ -332,6 +336,7 @@ git commit -m "Scaffold SvelteKit app with Drizzle, Vitest, and Playwright"
 ### Task 2: Shared types, schema, database module, and health route
 
 **Files:**
+
 - Create: `src/lib/shared/types.ts`
 - Create: `src/lib/server/db/schema.ts` (replace scaffolded)
 - Create: `src/lib/server/db/index.ts` (replace scaffolded)
@@ -340,6 +345,7 @@ git commit -m "Scaffold SvelteKit app with Drizzle, Vitest, and Playwright"
 - Create: `drizzle/0000_*.sql` and `drizzle/meta/*` (generated)
 
 **Interfaces:**
+
 - Produces: `openDatabase(url, migrationsFolder?) => Db`, `getDb() => Db`, types `Db`, `Tx`, `DbLike`, the table objects `accounts`, `magicLinks`, `sessions`, `events`, `options`, `participants`, `responses`, `anonymizedPoints`, `analysisJobs`, row types `EventRow`, `OptionRow`, `ParticipantRow`, `ResponseRow`, and every type in `src/lib/shared/types.ts`.
 
 - [ ] **Step 1: Write the shared types**
@@ -696,6 +702,7 @@ git commit -m "Add shared types, database schema, first migration, and health ro
 ### Task 3: Shared constants, validation schemas, and money formatting
 
 **Files:**
+
 - Create: `src/lib/shared/constants.ts`
 - Create: `src/lib/shared/validation.ts`
 - Create: `src/lib/shared/validation.test.ts`
@@ -703,6 +710,7 @@ git commit -m "Add shared types, database schema, first migration, and health ro
 - Create: `src/lib/shared/money.test.ts`
 
 **Interfaces:**
+
 - Produces: `CURRENCIES`, `LIMITS`, `RULES`, `EVENT_CODE_ALPHABET`, `EVENT_CODE_LENGTH`, `EVENT_TTL_DAYS`; zod schemas `createEventInput`, `optionInput`, `responseInput`, `editResponseInput`, `closeInput`, `patchEventInput`, `participantStatusInput`; inferred types `CreateEventInput`, `ResponseInput`, `EditResponseInput`; `checkOptionRefs(ranking, vetoes, optionIds) => string | null`; `formatMoney(amount, currency, locale?) => string`.
 
 - [ ] **Step 1: Write the constants**
@@ -766,12 +774,7 @@ Create `src/lib/shared/validation.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import {
-	checkOptionRefs,
-	createEventInput,
-	editResponseInput,
-	responseInput
-} from './validation';
+import { checkOptionRefs, createEventInput, editResponseInput, responseInput } from './validation';
 
 const validEvent = {
 	title: 'Saturday night',
@@ -818,7 +821,9 @@ describe('createEventInput', () => {
 	});
 
 	it('rejects a title over 80 characters', () => {
-		expect(createEventInput.safeParse({ ...validEvent, title: 'x'.repeat(81) }).success).toBe(false);
+		expect(createEventInput.safeParse({ ...validEvent, title: 'x'.repeat(81) }).success).toBe(
+			false
+		);
 	});
 });
 
@@ -936,10 +941,7 @@ export const budgetInput = z
 
 export const responseInput = z.object({
 	name: trimmed(LIMITS.name).min(1, 'Enter your name'),
-	ranking: z
-		.array(z.string().min(1))
-		.min(1, 'Rank at least one option')
-		.max(LIMITS.maxOptions),
+	ranking: z.array(z.string().min(1)).min(1, 'Rank at least one option').max(LIMITS.maxOptions),
 	vetoes: z.array(z.string().min(1)).max(LIMITS.maxOptions).default([]),
 	budget: budgetInput.default(null),
 	opinion: trimmed(LIMITS.opinion).default(''),
@@ -1034,12 +1036,14 @@ git commit -m "Add shared constants, validation schemas, and money formatting"
 ### Task 4: Server crypto, errors, and HTTP helpers
 
 **Files:**
+
 - Create: `src/lib/server/crypto.ts`
 - Create: `src/lib/server/crypto.test.ts`
 - Create: `src/lib/server/errors.ts`
 - Create: `src/lib/server/http.ts`
 
 **Interfaces:**
+
 - Produces: `sha256Hex(input) => string`, `safeEqualHex(a, b) => boolean`, `isTokenShape(value) => value is string`, `newEventCode() => string`, `newId() => string`; `class AppError extends Error { status: number }` with constructors `badRequest`, `forbidden`, `notFound`, `conflict`, `tooMany`; `readJson(request, schema) => Promise<T>` and `raise(e) => never`.
 
 - [ ] **Step 1: Write the failing crypto test**
@@ -1214,11 +1218,13 @@ git commit -m "Add server crypto, error types, and HTTP helpers"
 ### Task 5: Event repository
 
 **Files:**
+
 - Create: `src/lib/server/events.ts`
 - Create: `src/lib/server/events.test.ts`
 - Create: `src/lib/server/test-utils.ts`
 
 **Interfaces:**
+
 - Consumes: `Db`, `DbLike`, `events`, `options`, `EventRow`, `OptionRow` (Task 2); `newEventCode`, `newId`, `conflict`, `notFound` (Task 4); `CreateEventInput` (Task 3).
 - Produces: `createEvent(db: Db, input: CreateEventInput, hostTokenHash: string, now?: Date) => EventRow`, `getEventById(db: DbLike, id) => EventRow`, `findEventByCode(db: DbLike, code) => EventRow | undefined`, `listOptions(db: DbLike, eventId) => OptionRow[]`, `setClosesAt(db: DbLike, event, closesAt: string | null) => EventRow`, `stopSubmissions(db: DbLike, event, now?) => EventRow`, `closeDueEvents(db: DbLike, now?) => number`, `refreshState(db: DbLike, event, now?) => EventRow`, `toEventView(event, options) => EventView`, `toIso(value) => string`, `addDays(date, days) => Date`. Test helpers `makeDb()`, `makeEvent(db, overrides?)`, `response(name, ranking, extra?)`, `HOST_HASH`.
 
@@ -1539,11 +1545,13 @@ Expected: all event tests pass.
 ### Task 6: Participant repository and the single read-all function
 
 **Files:**
+
 - Create: `src/lib/server/participants.ts`
 - Create: `src/lib/server/participants.test.ts`
 - Create: `src/lib/server/analysis/responses.ts`
 
 **Interfaces:**
+
 - Consumes: Task 2 tables and row types, Task 3 `checkOptionRefs`, `ResponseInput`, `EditResponseInput`, Task 4 errors, Task 5 helpers.
 - Produces: `findParticipantByDevice(db, eventId, deviceTokenHash) => ParticipantRow | undefined`, `getParticipant(db, id) => ParticipantRow`, `submitResponse(db: Db, event, optionIds, deviceTokenHash, input: ResponseInput, opts: { autoApprove: boolean; now?: Date }) => ParticipantRow`, `updateResponse(db, event, optionIds, participant, input: EditResponseInput, now?) => void`, `getMine(db, participant) => MineView`, `listRoster(db, eventId) => RosterRow[]`, `setParticipantStatus(db, event, participantId, status) => void`, `approveAllPending(db, event) => number`, `resolvePending(db, eventId, status) => number`, `countSubmitted(db, eventId) => number`, `countByStatus(db, eventId, status) => number`, `toBudget(kind, amount) => Budget`; and `readApprovedResponses(db, eventId) => ApprovedResponse[]` with `ApprovedResponse = { participantId; ranking; vetoes; budget; opinion; suggestion }`.
 
@@ -1763,7 +1771,11 @@ import { participants, responses, type EventRow, type ParticipantRow } from './d
 import { newId } from './crypto';
 import { badRequest, conflict, notFound } from './errors';
 import type { Budget, MineView, ParticipantStatus, RosterRow } from '$lib/shared/types';
-import { checkOptionRefs, type EditResponseInput, type ResponseInput } from '$lib/shared/validation';
+import {
+	checkOptionRefs,
+	type EditResponseInput,
+	type ResponseInput
+} from '$lib/shared/validation';
 
 export function toBudget(kind: 'limit' | 'no_limit' | null, amount: number | null): Budget {
 	if (kind === 'limit') return { kind: 'limit', amount: amount ?? 0 };
@@ -1779,7 +1791,9 @@ export function findParticipantByDevice(
 	return db
 		.select()
 		.from(participants)
-		.where(and(eq(participants.eventId, eventId), eq(participants.deviceTokenHash, deviceTokenHash)))
+		.where(
+			and(eq(participants.eventId, eventId), eq(participants.deviceTokenHash, deviceTokenHash))
+		)
 		.get();
 }
 
@@ -1854,11 +1868,7 @@ export function updateResponse(
 
 /** The participant's own submission. The only path that returns response data to a client. */
 export function getMine(db: DbLike, participant: ParticipantRow): MineView {
-	const row = db
-		.select()
-		.from(responses)
-		.where(eq(responses.participantId, participant.id))
-		.get();
+	const row = db.select().from(responses).where(eq(responses.participantId, participant.id)).get();
 	if (!row) throw notFound('Response not found');
 	return {
 		name: participant.displayName,
@@ -2006,10 +2016,12 @@ Expected: all participant tests pass.
 ### Task 7: Aggregation and suppression
 
 **Files:**
+
 - Create: `src/lib/server/analysis/aggregate.ts`
 - Create: `src/lib/server/analysis/aggregate.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Aggregates`, `PresentedTallies`, `Budget` (Task 2), `RULES` (Task 3).
 - Produces: `aggregate(options: AggregateOption[], responses: AggregateResponse[]) => Aggregates` where `AggregateOption = { id: string; cost: number | null }` and `AggregateResponse = { ranking: string[]; vetoes: string[]; budget: Budget }`; `findCondorcetWinner(ids, responses) => string | null`; `presentTallies(agg: Aggregates) => PresentedTallies`.
 
@@ -2294,10 +2306,12 @@ Expected: all aggregation tests pass.
 ### Task 8: Finalizing the roster
 
 **Files:**
+
 - Create: `src/lib/server/close.ts`
 - Create: `src/lib/server/close.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 5 `getEventById`, `listOptions`, `stopSubmissions`; Task 6 `resolvePending`, `readApprovedResponses`; Task 7 `aggregate`.
 - Produces: `finalizeRoster(db: Db, event: EventRow, pending: 'approve' | 'reject', now?: Date) => EventRow`.
 
@@ -2309,7 +2323,12 @@ Create `src/lib/server/close.test.ts`:
 import { describe, expect, it } from 'vitest';
 import { finalizeRoster } from './close';
 import { listOptions, stopSubmissions } from './events';
-import { approveAllPending, countByStatus, setParticipantStatus, submitResponse } from './participants';
+import {
+	approveAllPending,
+	countByStatus,
+	setParticipantStatus,
+	submitResponse
+} from './participants';
 import { makeDb, makeEvent, response } from './test-utils';
 
 const device = (n: number) => n.toString(16).padStart(64, '0');
@@ -2441,6 +2460,7 @@ Expected: all close tests pass.
 ### Task 9: Rate limiter, role resolution, and server hooks
 
 **Files:**
+
 - Create: `src/lib/server/ratelimit.ts`
 - Create: `src/lib/server/ratelimit.test.ts`
 - Create: `src/lib/server/roles.ts`
@@ -2448,6 +2468,7 @@ Expected: all close tests pass.
 - Create: `src/hooks.server.ts`
 
 **Interfaces:**
+
 - Consumes: Task 4 `sha256Hex`, `safeEqualHex`, `isTokenShape`, `forbidden`, `tooMany`; Task 5 `closeDueEvents`; Task 6 `findParticipantByDevice`.
 - Produces: `class RateLimiter { allow(key, limit, windowMs, now?) => boolean; prune(now?, maxAgeMs?) => void; size }`, `limiter` singleton, `enforce(key, limit, windowMs) => void`; `tokenFromHeader(request, name) => string | null`, `isHost(event, request) => boolean`, `requireHost(event, request) => void`, `participantFromRequest(db, event, request) => ParticipantRow | undefined`.
 
@@ -2688,6 +2709,7 @@ git commit -m "Add rate limiter, role resolution, and server hooks"
 ### Task 10: View model and the event API (create, view, auto-close time)
 
 **Files:**
+
 - Create: `src/lib/server/views.ts`
 - Create: `src/routes/api/events/+server.ts`
 - Create: `src/routes/api/events/[code]/+server.ts`
@@ -2695,6 +2717,7 @@ git commit -m "Add rate limiter, role resolution, and server hooks"
 - Create: `e2e/api.e2e.ts`
 
 **Interfaces:**
+
 - Consumes: Tasks 4 to 9.
 - Produces: `loadEventOr404(db, code, now?) => EventRow`, `buildEventPageView(db, event, request) => EventPageView`; HTTP `POST /api/events` (headers `x-host-token`; body `CreateEventInput`; 201 `{ code }`), `GET /api/events/{code}` (200 `EventPageView`), `PATCH /api/events/{code}` (host; body `{ closesAt: string | null }`; 200 `EventPageView`). Test helpers `token()`, `sampleOptions`, `createEventApi(request, hostToken, overrides?)`, `viewApi(request, code, headers?)`, `submitApi(request, code, participantToken, body, extraHeaders?)`, `newDevice(browser)`.
 
@@ -2824,7 +2847,13 @@ Create `e2e/helpers.ts`:
 
 ```ts
 import { randomBytes } from 'node:crypto';
-import { test, type APIRequestContext, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import {
+	test,
+	type APIRequestContext,
+	type Browser,
+	type BrowserContext,
+	type Page
+} from '@playwright/test';
 
 /** A fresh 64-hex token, the same shape the browser generates. */
 export const token = () => randomBytes(32).toString('hex');
@@ -2885,7 +2914,9 @@ export function submitApi(
 }
 
 /** A fresh browser context is a fresh device: its own storage, so its own tokens. */
-export async function newDevice(browser: Browser): Promise<{ context: BrowserContext; page: Page }> {
+export async function newDevice(
+	browser: Browser
+): Promise<{ context: BrowserContext; page: Page }> {
 	const use = test.info().project.use;
 	const context = await browser.newContext({
 		baseURL: use.baseURL,
@@ -3005,10 +3036,12 @@ git commit -m "Add event view model and the create, view, and auto-close API"
 ### Task 11: Response API (submit and edit)
 
 **Files:**
+
 - Create: `src/routes/api/events/[code]/responses/+server.ts`
 - Modify: `e2e/api.e2e.ts` (append a describe block)
 
 **Interfaces:**
+
 - Consumes: Task 6 `submitResponse`, `updateResponse`; Task 9 `isHost`, `participantFromRequest`, `tokenFromHeader`, `enforce`; Task 10 `loadEventOr404`.
 - Produces: `POST /api/events/{code}/responses` (headers `x-participant-token`, optional `x-host-token`; body `ResponseInput`; 201 `{ participantId }`), `PUT /api/events/{code}/responses` (headers `x-participant-token`; body `EditResponseInput`; 200 `{ ok: true }`).
 
@@ -3124,7 +3157,10 @@ test.describe('responses API', () => {
 		expect(unknown.status()).toBe(400);
 		expect((await unknown.json()).message).toMatch(/unknown option/);
 
-		const repeat = await submitApi(request, code, token(), { name: 'A', ranking: [ids[0], ids[0]] });
+		const repeat = await submitApi(request, code, token(), {
+			name: 'A',
+			ranking: [ids[0], ids[0]]
+		});
 		expect(repeat.status()).toBe(400);
 		expect((await repeat.json()).message).toMatch(/repeats/);
 
@@ -3213,12 +3249,14 @@ Expected: all `events API` and `responses API` tests pass.
 ### Task 12: Roster and close API
 
 **Files:**
+
 - Create: `src/routes/api/events/[code]/participants/[id]/+server.ts`
 - Create: `src/routes/api/events/[code]/roster/approve-all/+server.ts`
 - Create: `src/routes/api/events/[code]/close/+server.ts`
 - Modify: `e2e/api.e2e.ts` (append a describe block)
 
 **Interfaces:**
+
 - Consumes: Task 6 `setParticipantStatus`, `approveAllPending`; Task 5 `stopSubmissions`; Task 8 `finalizeRoster`; Task 9 `requireHost`; Task 10 view helpers.
 - Produces: `PATCH /api/events/{code}/participants/{id}` (host; body `{ status: 'approved' | 'rejected' }`; 200 `EventPageView`), `POST /api/events/{code}/roster/approve-all` (host; 200 `EventPageView`), `POST /api/events/{code}/close` (host; body `{ pending: 'approve' | 'reject' }`; 200 `EventPageView`; 409 when already final).
 
@@ -3267,7 +3305,9 @@ test.describe('roster and close API', () => {
 		expect(approveAll.status()).toBe(200);
 		view = await approveAll.json();
 		expect(view.host.pendingCount).toBe(0);
-		expect(view.host.roster.filter((r: { status: string }) => r.status === 'approved')).toHaveLength(5);
+		expect(
+			view.host.roster.filter((r: { status: string }) => r.status === 'approved')
+		).toHaveLength(5);
 		expect(view.host.tallies).toBeNull();
 
 		const strangerClose = await request.post(`/api/events/${code}/close`, {
@@ -3347,7 +3387,10 @@ test.describe('roster and close API', () => {
 		await submitApi(request, code, token(), { name: 'Ana', ranking: [ids[0]] });
 
 		const soon = new Date(Date.now() + 1500).toISOString();
-		const set = await request.patch(`/api/events/${code}`, { headers: host, data: { closesAt: soon } });
+		const set = await request.patch(`/api/events/${code}`, {
+			headers: host,
+			data: { closesAt: soon }
+		});
 		expect(set.status()).toBe(200);
 		await new Promise((resolve) => setTimeout(resolve, 1700));
 
@@ -3482,6 +3525,7 @@ Expected: every test in `e2e/api.e2e.ts` passes.
 ### Task 13: Client foundation (styles, token store, API client)
 
 **Files:**
+
 - Create: `src/app.css`
 - Modify: `src/routes/+layout.svelte`
 - Create: `src/lib/client/tokens.ts`
@@ -3489,6 +3533,7 @@ Expected: every test in `e2e/api.e2e.ts` passes.
 - Create: `src/lib/client/api.ts`
 
 **Interfaces:**
+
 - Produces: CSS classes `card`, `notice`, `pill`, `pill-success`, `pill-warn`, `pill-danger`, `row`, `dashed`, `grow`, `num`, `icon-btn`, `chips`, `chip`, `veto`, `btn-primary`, `btn-block`, `btn-danger`, `error`, `muted`, `small`, `bar`, `name`, `track`, `seg`, `val`, `stack`, `actions`; `newToken() => string`, `getToken(code, role) => string | null`, `setToken(code, role, token) => void`, `ensureToken(code, role) => string`; `api<T>(path, opts?) => Promise<T>` with `opts = { method?, body?, code?, headers? }` and `class ApiError extends Error { status: number }`.
 
 - [ ] **Step 1: Write the stylesheet**
@@ -4034,6 +4079,7 @@ git commit -m "Add base styles, browser token store, and API client"
 ### Task 14: Home page, event page shell, link screen, and a first host view
 
 **Files:**
+
 - Create: `src/routes/+page.svelte` (replace scaffolded)
 - Create: `src/routes/e/[code]/+page.ts`
 - Create: `src/routes/e/[code]/+page.svelte`
@@ -4043,6 +4089,7 @@ git commit -m "Add base styles, browser token store, and API client"
 - Create: `e2e/create.e2e.ts`
 
 **Interfaces:**
+
 - Consumes: Task 13 `api`, `ApiError`, `newToken`, `setToken`; Task 3 `CURRENCIES`, `LIMITS`, `createEventInput`; Task 10 API.
 - Produces: the pages `/` and `/e/{code}`; components `LinkCard` (`code`), `LinkScreen` (`code`, `title`), `HostView` (`view`, `code`, `onchange`).
 
@@ -4317,8 +4364,8 @@ Create `src/lib/components/LinkScreen.svelte`:
 <p class="muted">{title}</p>
 <LinkCard {code} />
 <p class="small muted">
-	This device is the host. Keep using this browser to approve names, close submissions, and run
-	the analysis.
+	This device is the host. Keep using this browser to approve names, close submissions, and run the
+	analysis.
 </p>
 <button type="button" class="btn-primary btn-block" onclick={() => goto(`/e/${code}`)}>
 	Continue to host view
@@ -4437,6 +4484,7 @@ Expected: both create tests pass.
 ### Task 15: Participant experience
 
 **Files:**
+
 - Create: `src/lib/components/PrivacyNotice.svelte`
 - Create: `src/lib/components/RankingWidget.svelte`
 - Create: `src/lib/components/BudgetChips.svelte`
@@ -4448,6 +4496,7 @@ Expected: both create tests pass.
 - Create: `e2e/participant.e2e.ts`
 
 **Interfaces:**
+
 - Consumes: Task 13 client modules; Task 3 `LIMITS`, `responseInput`, `editResponseInput`, `formatMoney`; Task 11 API.
 - Produces: `ResponseForm` (`event`, `code`, `mine?`, `oncancel?`, `onsubmitted`), `RankingWidget` (`options`, `currency`, `bind:ranked`, `bind:vetoed`), `BudgetChips` (`costs`, `currency`, `bind:value`), `ParticipantView` (`view`, `code`, `onchange`), `SubmittedCard` (`event`, `mine`, `onedit`), `PrivacyNotice`; e2e helper `submitViaUi(browser, code, person)`.
 
@@ -4467,7 +4516,8 @@ export type Person = {
 	suggestion?: string;
 };
 
-const startsWith = (label: string) => new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+const startsWith = (label: string) =>
+	new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 
 /** Opens the link on a fresh device, fills the form as the given person, submits, and closes the device. */
 export async function submitViaUi(browser: Browser, code: string, person: Person): Promise<void> {
@@ -4557,7 +4607,10 @@ test.describe('participant', () => {
 		const { page, context } = await newDevice(browser);
 		await page.goto(`/e/${code}`);
 		await page.getByLabel('Your name').fill('Sam');
-		await page.getByTestId('unranked').getByRole('button', { name: /^Beach BBQ/ }).click();
+		await page
+			.getByTestId('unranked')
+			.getByRole('button', { name: /^Beach BBQ/ })
+			.click();
 		await page.getByRole('button', { name: 'Submit', exact: true }).click();
 		await expect(page.getByRole('heading', { name: 'Thanks, Sam' })).toBeVisible();
 
@@ -4848,7 +4901,9 @@ Create `src/lib/components/ResponseForm.svelte`:
 	<RankingWidget options={event.options} currency={event.currency} bind:ranked bind:vetoed />
 
 	{#if costs.length > 0}
-		<p class="label">The most you'd comfortably spend per person <span class="muted">optional</span></p>
+		<p class="label">
+			The most you'd comfortably spend per person <span class="muted">optional</span>
+		</p>
 		<BudgetChips {costs} currency={event.currency} bind:value={budget} />
 	{/if}
 
@@ -5043,6 +5098,7 @@ Expected: participant and create tests pass.
 ### Task 16: Host view (roster, approvals, close, tallies)
 
 **Files:**
+
 - Create: `src/lib/components/Roster.svelte`
 - Create: `src/lib/components/CloseDialog.svelte`
 - Create: `src/lib/components/TalliesView.svelte`
@@ -5051,6 +5107,7 @@ Expected: participant and create tests pass.
 - Create: `e2e/host.e2e.ts`
 
 **Interfaces:**
+
 - Consumes: Task 12 API; Task 15 `ResponseForm`; Task 14 `LinkCard`.
 - Produces: `Roster` (`roster`, `readonly`, `onstatus?`), `CloseDialog` (`pendingCount`, `onconfirm`, exported `open()`), `TalliesView` (`tallies`, `options`, `currency`), the full `HostView`; e2e helper `openAsHost(browser, code, hostToken)`.
 
@@ -5112,7 +5169,9 @@ test.describe('host', () => {
 		await expect(page.getByText('SENTINEL')).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Reject Cleo' }).click();
-		await expect(roster.getByRole('listitem').filter({ hasText: 'Cleo' })).toContainText('Rejected');
+		await expect(roster.getByRole('listitem').filter({ hasText: 'Cleo' })).toContainText(
+			'Rejected'
+		);
 		await page.getByRole('button', { name: 'Approve all pending (2)' }).click();
 		await expect(roster.getByRole('listitem').filter({ hasText: 'Ana' })).toContainText('Approved');
 		await expect(page.getByRole('button', { name: /Approve all pending/ })).toHaveCount(0);
@@ -5169,7 +5228,10 @@ test.describe('host', () => {
 		const { page, context } = await openAsHost(browser, code, hostToken);
 		await page.getByRole('button', { name: 'Submit my response' }).click();
 		await page.getByLabel('Your name').fill('Charlie');
-		await page.getByTestId('unranked').getByRole('button', { name: /^Tapas crawl/ }).click();
+		await page
+			.getByTestId('unranked')
+			.getByRole('button', { name: /^Tapas crawl/ })
+			.click();
 		await page.getByRole('button', { name: 'Submit', exact: true }).click();
 		await expect(page.getByText('Your own response is in.')).toBeVisible();
 		await expect(page.getByText('1 submitted')).toBeVisible();
@@ -5304,8 +5366,8 @@ Create `src/lib/components/CloseDialog.svelte`:
 	{#if pendingCount > 0}
 		<p>
 			{pendingCount}
-			{pendingCount === 1 ? 'name is' : 'names are'} still pending. Closing is final, so decide what
-			happens to them.
+			{pendingCount === 1 ? 'name is' : 'names are'} still pending. Closing is final, so decide what happens
+			to them.
 		</p>
 		<div class="stack">
 			<button type="button" class="btn-primary btn-block" onclick={() => choose('approve')}>
@@ -5378,7 +5440,10 @@ Create `src/lib/components/TalliesView.svelte`:
 			<div class="bar">
 				<span class="name">{label(f.optionId)}</span>
 				<div class="track">
-					<div class="seg" style={`width:${(f.count / maxFirst) * 100}%;background:var(--accent)`}></div>
+					<div
+						class="seg"
+						style={`width:${(f.count / maxFirst) * 100}%;background:var(--accent)`}
+					></div>
 				</div>
 				<span class="val" data-testid={`first-${f.optionId}`}>{f.count}</span>
 			</div>
@@ -5397,7 +5462,9 @@ Create `src/lib/components/TalliesView.svelte`:
 			<span class="val"></span>
 		</div>
 	{/each}
-	<p class="small muted">Darker means ranked higher. The lightest segment is last place or unranked.</p>
+	<p class="small muted">
+		Darker means ranked higher. The lightest segment is last place or unranked.
+	</p>
 
 	{#if breakdown.vetoes.some((v) => v.count > 0)}
 		<h3>Won't work for</h3>
@@ -5407,7 +5474,9 @@ Create `src/lib/components/TalliesView.svelte`:
 	{/if}
 
 	{#if breakdown.condorcetWinner}
-		<p class="small muted">{label(breakdown.condorcetWinner)} beats every other option head to head.</p>
+		<p class="small muted">
+			{label(breakdown.condorcetWinner)} beats every other option head to head.
+		</p>
 	{/if}
 
 	{#if breakdown.cost}
@@ -5597,11 +5666,13 @@ Expected: host, participant, and create tests all pass.
 ### Task 17: Model provider seam with the fake provider
 
 **Files:**
+
 - Create: `src/lib/server/analysis/provider.ts`
 - Create: `src/lib/server/analysis/fake.ts`
 - Create: `src/lib/server/analysis/provider.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 4 `badRequest`.
 - Produces: `type ProviderId`, `type ModelInfo`, `type JsonRequest`, `interface ModelProvider { id; listModels(key); completeJson(request) }`, `isFakeProviderAllowed(env?) => boolean`, `getProvider(id, env?) => ModelProvider`, `fakeProvider`. Phase 2 adds the Anthropic, OpenAI, and OpenRouter implementations behind the same interface.
 
@@ -5720,10 +5791,12 @@ Expected: provider tests pass.
 ### Task 18: The full story and the anonymity harness
 
 **Files:**
+
 - Create: `e2e/story.e2e.ts`
 - Create: `e2e/suppression.e2e.ts`
 
 **Interfaces:**
+
 - Consumes: every helper in `e2e/helpers.ts`.
 
 - [ ] **Step 1: Write the story test**
@@ -5735,11 +5808,37 @@ import { expect, test } from '@playwright/test';
 import { newDevice, submitViaUi, type Person } from './helpers';
 
 const people: Person[] = [
-	{ name: 'Ana', rank: ['Tapas', 'Rooftop', 'Beach'], budget: 'Up to €25', opinion: 'SENTINEL-Ana central is key' },
-	{ name: 'Ben', rank: ['Tapas', 'Beach'], veto: ['Paella'], budget: 'Up to €25', opinion: 'SENTINEL-Ben cheap and cheerful' },
-	{ name: 'Cleo', rank: ['Rooftop', 'Tapas'], budget: 'No limit', opinion: 'SENTINEL-Cleo views please' },
-	{ name: 'Dev', rank: ['Beach', 'Tapas', 'Rooftop'], budget: 'Up to €45', opinion: 'SENTINEL-Dev beach if sunny' },
-	{ name: 'Eli', rank: ['Tapas', 'Paella'], budget: 'Up to €25', opinion: 'SENTINEL-Eli early flight sunday' },
+	{
+		name: 'Ana',
+		rank: ['Tapas', 'Rooftop', 'Beach'],
+		budget: 'Up to €25',
+		opinion: 'SENTINEL-Ana central is key'
+	},
+	{
+		name: 'Ben',
+		rank: ['Tapas', 'Beach'],
+		veto: ['Paella'],
+		budget: 'Up to €25',
+		opinion: 'SENTINEL-Ben cheap and cheerful'
+	},
+	{
+		name: 'Cleo',
+		rank: ['Rooftop', 'Tapas'],
+		budget: 'No limit',
+		opinion: 'SENTINEL-Cleo views please'
+	},
+	{
+		name: 'Dev',
+		rank: ['Beach', 'Tapas', 'Rooftop'],
+		budget: 'Up to €45',
+		opinion: 'SENTINEL-Dev beach if sunny'
+	},
+	{
+		name: 'Eli',
+		rank: ['Tapas', 'Paella'],
+		budget: 'Up to €25',
+		opinion: 'SENTINEL-Eli early flight sunday'
+	},
 	{ name: 'Fay', rank: ['Rooftop'], veto: ['Beach'], opinion: 'SENTINEL-Fay hates sand' }
 ];
 
@@ -5792,7 +5891,9 @@ test('the whole Barcelona story through close, with the host never seeing a raw 
 	const first = host.page.getByTestId('first-choices');
 	await expect(first).toContainText('Tapas crawl');
 	await expect(first.locator('[data-testid^="first-"]')).toHaveText(['3', '1', '1', '0']);
-	await expect(host.page.getByText('Tapas crawl beats every other option head to head.')).toBeVisible();
+	await expect(
+		host.page.getByText('Tapas crawl beats every other option head to head.')
+	).toBeVisible();
 	await expect(host.page.getByText('5 of 5 set a limit.')).toBeVisible();
 	await expect(host.page.getByText('over budget for 3')).toBeVisible();
 
@@ -5838,7 +5939,9 @@ test('four approved responses show no breakdown, and small cost counts stay hidd
 	await four.page.getByRole('button', { name: 'Close submissions' }).click();
 	await four.page.getByRole('button', { name: 'Approve pending and close' }).click();
 	await expect(four.page.getByText('4 approved responses')).toBeVisible();
-	await expect(four.page.getByText('Numbers appear once at least 5 approved responses')).toBeVisible();
+	await expect(
+		four.page.getByText('Numbers appear once at least 5 approved responses')
+	).toBeVisible();
 	await expect(four.page.getByText('First choices')).toHaveCount(0);
 	await expect(four.page.getByText('over budget')).toHaveCount(0);
 	await four.context.close();
@@ -5881,12 +5984,14 @@ Expected: every e2e file passes: api, create, participant, host, story, suppress
 ### Task 19: Docker image with Litestream
 
 **Files:**
+
 - Create: `deploy/Dockerfile`
 - Create: `deploy/entrypoint.sh`
 - Create: `deploy/litestream.yml`
 - Create: `.dockerignore`
 
 **Interfaces:**
+
 - Consumes: the `build` output and `drizzle/` migrations.
 - Produces: an image that runs `node build` on port 3000 with the database at `/data/app.db`, restoring from and replicating to an S3-compatible bucket whenever `BUCKET_NAME` is set, and running without replication otherwise.
 
@@ -6011,10 +6116,12 @@ git commit -m "Add Docker image with Litestream restore and replication"
 ### Task 20: Deploy to Fly.io
 
 **Files:**
+
 - Create: `fly.toml`
 - Modify: `README.md` (add a Deploy section)
 
 **Interfaces:**
+
 - Produces: the public URL `https://<app-name>.fly.dev` running always-on with a persistent volume and Tigris backups.
 
 Two steps need Charlie at the keyboard because they open a browser or prompt for his account: installing and logging in to flyctl, and creating the Tigris bucket. The executing agent stops at those steps, tells him exactly what to run, and continues once he confirms. Nothing in this task is committed until the deploy is verified.
@@ -6122,7 +6229,7 @@ Expected: at least one snapshot row.
 
 Append to `README.md`:
 
-```markdown
+````markdown
 ## Deploy
 
 The app runs on Fly.io as one always-on machine with a volume at `/data` and Litestream replicating the database to a Tigris bucket.
@@ -6132,25 +6239,29 @@ fly deploy
 fly logs
 fly ssh console -C "litestream snapshots -config /etc/litestream.yml /data/app.db"
 ```
+````
 
 Secrets for the bucket are set by `fly storage create` and never committed.
 The app name, region, and public origin live in `fly.toml`.
-```
+
+````
 
 ```bash
 git add fly.toml README.md
 git commit -m "Add Fly.io configuration and deploy notes"
 git push
-```
+````
 
 ---
 
 ### Task 21: Continuous integration
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
+
 - Produces: a GitHub Actions workflow that runs lint, type check, unit tests, and the Playwright suite with the fake provider on every push and pull request.
 
 - [ ] **Step 1: Write the workflow**

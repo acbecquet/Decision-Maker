@@ -35,21 +35,21 @@ Out of scope for this project:
 
 ## 3. Decisions made during the brainstorm
 
-| Topic | Decision |
-| --- | --- |
-| Anonymity boundary | The host sees names and aggregate numbers only, never a link between a name and a choice, and never opinion text. |
-| Preference input | Participants rank the options by tapping them into order, with an optional "won't work for me" flag per option. |
-| Opinion input | One open text box, not guided prompts. |
-| Cost | Every step carries cost: per-option cost from the host, a private budget limit from each participant, aggregate cost numbers in the report, and stricter anonymization for cost opinions. |
-| Host role | The device that created the event holds a host token. Signing in extends host access to other devices. |
-| Host sign-in | Email magic link. |
-| Model access | Anthropic and OpenAI by pasted API key, OpenRouter by one-tap OAuth PKCE connect or pasted key. The key stays in the host's browser and is passed to the server only for the duration of a call. |
-| Report delivery | Approved participants reopen the same link. The host announces it in the group chat. |
-| Retention | Raw rankings and opinions are purged the moment the host publishes. |
-| Write-ins | Participants may suggest an option as text. Suggestions feed the analysis but are not added to the ranking list. |
-| Close | Closing submissions is final. There is no reopen. |
-| Architecture | SvelteKit with TypeScript, SQLite through Drizzle, one Node process, one Docker image. |
-| Hosting | Fly.io, one always-on machine, persistent volume, Litestream backups to object storage. |
+| Topic              | Decision                                                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Anonymity boundary | The host sees names and aggregate numbers only, never a link between a name and a choice, and never opinion text.                                                                                |
+| Preference input   | Participants rank the options by tapping them into order, with an optional "won't work for me" flag per option.                                                                                  |
+| Opinion input      | One open text box, not guided prompts.                                                                                                                                                           |
+| Cost               | Every step carries cost: per-option cost from the host, a private budget limit from each participant, aggregate cost numbers in the report, and stricter anonymization for cost opinions.        |
+| Host role          | The device that created the event holds a host token. Signing in extends host access to other devices.                                                                                           |
+| Host sign-in       | Email magic link.                                                                                                                                                                                |
+| Model access       | Anthropic and OpenAI by pasted API key, OpenRouter by one-tap OAuth PKCE connect or pasted key. The key stays in the host's browser and is passed to the server only for the duration of a call. |
+| Report delivery    | Approved participants reopen the same link. The host announces it in the group chat.                                                                                                             |
+| Retention          | Raw rankings and opinions are purged the moment the host publishes.                                                                                                                              |
+| Write-ins          | Participants may suggest an option as text. Suggestions feed the analysis but are not added to the ranking list.                                                                                 |
+| Close              | Closing submissions is final. There is no reopen.                                                                                                                                                |
+| Architecture       | SvelteKit with TypeScript, SQLite through Drizzle, one Node process, one Docker image.                                                                                                           |
+| Hosting            | Fly.io, one always-on machine, persistent volume, Litestream backups to object storage.                                                                                                          |
 
 ## 4. System overview
 
