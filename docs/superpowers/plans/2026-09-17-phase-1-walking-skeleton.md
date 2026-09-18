@@ -4228,6 +4228,7 @@ Replace `src/routes/+page.svelte` with:
 ```svelte
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { api, ApiError } from '$lib/client/api';
 	import { newToken, setToken } from '$lib/client/tokens';
 	import { CURRENCIES, LIMITS, type Currency } from '$lib/shared/constants';
@@ -4291,7 +4292,7 @@ Replace `src/routes/+page.svelte` with:
 				headers: { 'x-host-token': hostToken }
 			});
 			setToken(code, 'host', hostToken);
-			await goto(`/e/${code}?created=1`);
+			await goto(resolve('/e/[code]?created=1', { code }));
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Something went wrong, try again';
 		} finally {
@@ -4390,25 +4391,38 @@ Create `src/lib/components/LinkCard.svelte`:
 <script lang="ts">
 	let { code }: { code: string } = $props();
 	const url = $derived(`${location.origin}/e/${code}`);
-	let copied = $state(false);
+	let status = $state<'idle' | 'copied' | 'failed'>('idle');
+	let input: HTMLInputElement | undefined = $state();
 
 	async function copy() {
 		try {
 			await navigator.clipboard.writeText(url);
-			copied = true;
-			setTimeout(() => (copied = false), 2000);
+			status = 'copied';
 		} catch {
-			copied = false;
+			status = 'failed';
+			input?.select();
 		}
+		setTimeout(() => (status = 'idle'), 3000);
 	}
 </script>
 
 <div class="card">
 	<label for="event-link">Share this link</label>
-	<input id="event-link" readonly value={url} onfocus={(e) => e.currentTarget.select()} />
+	<input
+		id="event-link"
+		bind:this={input}
+		readonly
+		value={url}
+		onfocus={(e) => e.currentTarget.select()}
+	/>
 	<div class="actions">
-		<button type="button" onclick={copy}>{copied ? 'Copied' : 'Copy link'}</button>
+		<button type="button" onclick={copy}>{status === 'copied' ? 'Copied' : 'Copy link'}</button>
 	</div>
+	{#if status === 'failed'}
+		<p class="small error" role="alert">
+			Copying is not available here, so the link is selected for you to copy by hand.
+		</p>
+	{/if}
 </div>
 ```
 
@@ -4417,6 +4431,7 @@ Create `src/lib/components/LinkScreen.svelte`:
 ```svelte
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import LinkCard from './LinkCard.svelte';
 
 	let { code, title }: { code: string; title: string } = $props();
@@ -4429,7 +4444,11 @@ Create `src/lib/components/LinkScreen.svelte`:
 	This device is the host. Keep using this browser to approve names, close submissions, and run the
 	analysis.
 </p>
-<button type="button" class="btn-primary btn-block" onclick={() => goto(`/e/${code}`)}>
+<button
+	type="button"
+	class="btn-primary btn-block"
+	onclick={() => goto(resolve('/e/[code]', { code }))}
+>
 	Continue to host view
 </button>
 ```
@@ -4443,6 +4462,7 @@ Create `src/lib/components/HostView.svelte`:
 	import type { EventPageView } from '$lib/shared/types';
 	import LinkCard from './LinkCard.svelte';
 
+	// eslint-disable-next-line svelte/no-unused-props -- onchange is wired by Task 16's host actions
 	let { view, code }: { view: EventPageView; code: string; onchange: () => void } = $props();
 	const event = $derived(view.event);
 	const host = $derived(view.host);
@@ -4884,6 +4904,7 @@ Create `src/lib/components/ResponseForm.svelte`:
 
 ```svelte
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { api, ApiError } from '$lib/client/api';
 	import { ensureToken } from '$lib/client/tokens';
 	import { LIMITS } from '$lib/shared/constants';
@@ -4907,12 +4928,15 @@ Create `src/lib/components/ResponseForm.svelte`:
 		onsubmitted: () => void;
 	} = $props();
 
-	let name = $state(mine?.name ?? '');
-	let ranked = $state<string[]>(mine?.ranking ?? []);
-	let vetoed = $state<string[]>(mine?.vetoes ?? []);
-	let budget = $state<Budget>(mine?.budget ?? null);
-	let opinion = $state(mine?.opinion ?? '');
-	let suggestion = $state(mine?.suggestion ?? '');
+	/** The form is re-mounted whenever the submission changes, so a one-time prefill is intended. */
+	const initial = untrack(() => mine);
+
+	let name = $state(initial?.name ?? '');
+	let ranked = $state<string[]>(initial?.ranking ?? []);
+	let vetoed = $state<string[]>(initial?.vetoes ?? []);
+	let budget = $state<Budget>(initial?.budget ?? null);
+	let opinion = $state(initial?.opinion ?? '');
+	let suggestion = $state(initial?.suggestion ?? '');
 	let error = $state('');
 	let busy = $state(false);
 
