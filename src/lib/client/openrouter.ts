@@ -30,7 +30,11 @@ export async function beginOpenRouterConnect(
 ): Promise<string> {
 	const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
 	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-	storage.setItem(PKCE_KEY, JSON.stringify({ verifier, eventCode } satisfies Attempt));
+	try {
+		storage.setItem(PKCE_KEY, JSON.stringify({ verifier, eventCode } satisfies Attempt));
+	} catch {
+		throw new Error('This browser blocks site storage, so OpenRouter cannot be connected here');
+	}
 	const url = new URL(AUTH_URL);
 	url.searchParams.set('callback_url', origin + OPENROUTER_CALLBACK_PATH);
 	url.searchParams.set('code_challenge', base64url(new Uint8Array(digest)));
@@ -57,11 +61,22 @@ export async function finishOpenRouterConnect(
 		headers: { 'content-type': 'application/json' },
 		body: JSON.stringify({ code, code_verifier: attempt.verifier, code_challenge_method: 'S256' })
 	});
-	const body = res.ok ? ((await res.json()) as { key?: unknown }) : null;
+	let body: { key?: unknown } | null = null;
+	if (res.ok) {
+		try {
+			body = (await res.json()) as { key?: unknown };
+		} catch {
+			body = null;
+		}
+	}
 	if (!body || typeof body.key !== 'string' || body.key === '') {
 		throw new Error('OpenRouter did not return a key');
 	}
 	setProviderKey('openrouter', body.key);
-	storage.removeItem(PKCE_KEY);
+	try {
+		storage.removeItem(PKCE_KEY);
+	} catch {
+		// The key is saved; a stale attempt record is harmless.
+	}
 	return attempt.eventCode;
 }

@@ -77,6 +77,25 @@ describe('OpenRouter PKCE connect', () => {
 		expect(session.getItem('dm:openrouter:pkce')).toBeNull();
 	});
 
+	it('fails plainly when storage is blocked or the exchange body is not JSON', async () => {
+		const blocked = {
+			getItem: () => null,
+			setItem: () => {
+				throw new Error('blocked');
+			},
+			removeItem: () => undefined
+		} as unknown as Storage;
+		await expect(beginOpenRouterConnect('evt123', 'https://example.test', blocked)).rejects.toThrow(
+			/blocks site storage/
+		);
+		await beginOpenRouterConnect('evt123', 'https://example.test', session as unknown as Storage);
+		const html = (async () => new Response('<html>oops</html>', { status: 200 })) as typeof fetch;
+		await expect(finishOpenRouterConnect('x', html, session as unknown as Storage)).rejects.toThrow(
+			/did not return a key/
+		);
+		expect(getProviderKey('openrouter')).toBeNull();
+	});
+
 	it('fails plainly when there is no attempt or the exchange is refused', async () => {
 		await expect(
 			finishOpenRouterConnect('x', fetch, session as unknown as Storage)
