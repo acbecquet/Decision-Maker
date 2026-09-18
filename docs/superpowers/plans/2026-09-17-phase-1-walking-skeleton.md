@@ -5608,6 +5608,7 @@ Replace `src/lib/components/HostView.svelte` with:
 
 ```svelte
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { api, ApiError } from '$lib/client/api';
 	import type { EventPageView } from '$lib/shared/types';
 	import CloseDialog from './CloseDialog.svelte';
@@ -5616,14 +5617,17 @@ Replace `src/lib/components/HostView.svelte` with:
 	import Roster from './Roster.svelte';
 	import TalliesView from './TalliesView.svelte';
 
-	let { view, code, onchange }: { view: EventPageView; code: string; onchange: () => void } =
-		$props();
+	let {
+		view,
+		code,
+		onchange
+	}: { view: EventPageView; code: string; onchange: () => Promise<void> | void } = $props();
 
 	const event = $derived(view.event);
 	const host = $derived(view.host);
 	let error = $state('');
 	let showForm = $state(false);
-	let closesLocal = $state(toLocal(view.event.closesAt));
+	let closesLocal = $state(untrack(() => toLocal(view.event.closesAt)));
 	let closeDialog: ReturnType<typeof CloseDialog> | undefined = $state();
 
 	/** ISO instant to the local wall-clock format a datetime-local input expects. */
@@ -5638,7 +5642,7 @@ Replace `src/lib/components/HostView.svelte` with:
 		error = '';
 		try {
 			await api(path, { method, body, code });
-			onchange();
+			await onchange();
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Something went wrong, try again';
 		}
@@ -5685,9 +5689,12 @@ Replace `src/lib/components/HostView.svelte` with:
 			{event}
 			{code}
 			oncancel={() => (showForm = false)}
-			onsubmitted={() => {
-				showForm = false;
-				onchange();
+			onsubmitted={async () => {
+				try {
+					await onchange();
+				} finally {
+					showForm = false;
+				}
 			}}
 		/>
 	{:else}
