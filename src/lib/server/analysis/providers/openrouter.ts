@@ -49,21 +49,20 @@ export function createOpenRouterProvider(deps: Deps = {}): ModelProvider {
 		const data = (body as { data?: unknown } | null)?.data;
 		if (!Array.isArray(data))
 			throw new ProviderError('OpenRouter returned an unusable model list', true);
-		cache = { at: Date.now(), models: data as CatalogueModel[] };
+		if (!key) cache = { at: Date.now(), models: data as CatalogueModel[] };
 		return data as CatalogueModel[];
 	}
 
 	/**
-	 * The public catalogue, cached for ten minutes. A key is sent when available so account-only
-	 * models show, bypassing the cache read (a successful fetch still stores its result). Concurrent
-	 * callers share one in-flight fetch instead of each starting their own.
+	 * The public catalogue, cached for ten minutes. A keyed fetch (model listing) may include
+	 * account-only models, so it neither reads nor writes the shared cache and never joins or
+	 * becomes the shared in-flight fetch. Unkeyed callers share one in-flight fetch.
 	 */
 	function catalogue(key?: string): Promise<CatalogueModel[]> {
-		if (cache && Date.now() - cache.at < CATALOGUE_TTL_MS && !key) {
-			return Promise.resolve(cache.models);
-		}
+		if (key) return fetchCatalogue(key);
+		if (cache && Date.now() - cache.at < CATALOGUE_TTL_MS) return Promise.resolve(cache.models);
 		if (!pending) {
-			pending = fetchCatalogue(key).finally(() => {
+			pending = fetchCatalogue().finally(() => {
 				pending = null;
 			});
 		}

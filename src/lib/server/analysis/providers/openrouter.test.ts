@@ -237,6 +237,21 @@ describe('openrouterProvider catalogue resilience', () => {
 		expect(err.retryable).toBe(true);
 	});
 
+	it('never lets a keyed listing populate the shared catalogue cache', async () => {
+		const { fetch, calls } = fakeFetch((req) =>
+			req.url.endsWith('/models')
+				? { status: 200, body: catalogue }
+				: { status: 200, body: completion('{"a":1}') }
+		);
+		const provider = createOpenRouterProvider({ fetch });
+		await provider.listModels('sk-or-v1-testkey-12345678');
+		await provider.completeJson(request());
+		const catalogueCalls = calls.filter((c) => c.url.endsWith('/models'));
+		expect(catalogueCalls).toHaveLength(2);
+		expect(catalogueCalls[0].headers.get('authorization')).toBe('Bearer sk-or-v1-testkey-12345678');
+		expect(catalogueCalls[1].headers.get('authorization')).toBeNull();
+	});
+
 	it('shares one in-flight catalogue fetch across concurrent completions', async () => {
 		const { fetch, calls } = fakeFetch((req) =>
 			req.url.endsWith('/models')
