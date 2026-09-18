@@ -87,7 +87,7 @@ This is the device lock: the link carries no secret, so forwarding the link lets
 
 **Account session.**
 An httpOnly, secure, same-site cookie set after a magic-link sign-in.
-A magic link is single use and expires after fifteen minutes.
+A magic link is single use, expires after fifteen minutes, and is bound to the browser that requested it through an httpOnly nonce cookie whose hash sits on the link row, so a link opened in any other browser is refused and cannot claim that device's events.
 A session lasts ninety days.
 Events created while signed in belong to the account.
 When a host signs in on a device that holds host tokens, the client sends those tokens and the server attaches the matching events to the account.

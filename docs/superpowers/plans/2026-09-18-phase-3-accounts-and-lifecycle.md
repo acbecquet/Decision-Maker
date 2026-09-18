@@ -13,7 +13,7 @@ Delete and the expiry sweep are plain repository functions; the sweep runs on th
 ## Global Constraints
 
 - Design spec: `docs/superpowers/specs/2026-09-17-decision-maker-design.md`, sections 5 (account session), 6.1 (QR and share sheet), 6.5 (delete), 6.6 (housekeeping), 12 (tables), 14 (limits).
-- A magic link is single use and expires after fifteen minutes. A session lasts ninety days. Both tokens are 256-bit values stored only as SHA-256 hashes and compared through hashes.
+- A magic link is single use, expires after fifteen minutes, and is bound to the requesting browser by an httpOnly `dm_signin` nonce cookie checked at redemption (added after a security review found a session-fixation path that could claim a host's events into an attacker's account). A session lasts ninety days. Both tokens are 256-bit values stored only as SHA-256 hashes and compared through hashes.
 - The session cookie is named `dm_session`, httpOnly, sameSite lax, path `/`, secure when the request is https. No other cookie exists; participants never get one.
 - The one link renders the host view when the request carries a valid host token or a session that owns the event. Every host-only route accepts either.
 - Events created while signed in carry `account_id`. On sign-in the client sends the host tokens it holds and the server attaches the matching unowned events to the account.
