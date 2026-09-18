@@ -1561,6 +1561,8 @@ Create `src/lib/server/participants.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { events } from './db/schema';
 import { listOptions, stopSubmissions } from './events';
 import {
 	approveAllPending,
@@ -1713,14 +1715,15 @@ describe('roster', () => {
 		expect(() => setParticipantStatus(db, event, 'missing', 'approved')).toThrow(/not found/);
 	});
 
-	it('refuses status changes once the roster is final', () => {
+	it('refuses status changes once the roster is final, even from a stale snapshot', () => {
 		const { db, event, ids } = setup();
 		const a = submitResponse(db, event, ids, device(1), response('A', [ids[0]]), {
 			autoApprove: false
 		});
-		const finalEvent = { ...event, rosterFinal: true };
-		expect(() => setParticipantStatus(db, finalEvent, a.id, 'approved')).toThrow(/final/);
-		expect(() => approveAllPending(db, finalEvent)).toThrow(/final/);
+		db.update(events).set({ rosterFinal: true }).where(eq(events.id, event.id)).run();
+		expect(() => setParticipantStatus(db, event, a.id, 'approved')).toThrow(/final/);
+		expect(() => approveAllPending(db, event)).toThrow(/final/);
+		expect(countByStatus(db, event.id, 'pending')).toBe(1);
 	});
 });
 
@@ -1770,6 +1773,7 @@ import type { Db, DbLike } from './db';
 import { participants, responses, type EventRow, type ParticipantRow } from './db/schema';
 import { newId } from './crypto';
 import { badRequest, conflict, notFound } from './errors';
+import { getEventById } from './events';
 import type { Budget, MineView, ParticipantStatus, RosterRow } from '$lib/shared/types';
 import {
 	checkOptionRefs,
@@ -1909,7 +1913,7 @@ export function setParticipantStatus(
 	participantId: string,
 	status: 'approved' | 'rejected'
 ): void {
-	if (event.rosterFinal) throw conflict('The roster is final');
+	if (getEventById(db, event.id).rosterFinal) throw conflict('The roster is final');
 	const result = db
 		.update(participants)
 		.set({ status })
@@ -1919,7 +1923,7 @@ export function setParticipantStatus(
 }
 
 export function approveAllPending(db: DbLike, event: EventRow): number {
-	if (event.rosterFinal) throw conflict('The roster is final');
+	if (getEventById(db, event.id).rosterFinal) throw conflict('The roster is final');
 	return resolvePending(db, event.id, 'approved');
 }
 
@@ -3342,6 +3346,11 @@ test.describe('roster and close API', () => {
 			data: { status: 'rejected' }
 		});
 		expect(reject.status()).toBe(200);
+
+		const strangerPatch = await request.patch(`/api/events/${code}/participants/${fay.id}`, {
+			data: { status: 'approved' }
+		});
+		expect(strangerPatch.status()).toBe(403);
 
 		const strangerApprove = await request.post(`/api/events/${code}/roster/approve-all`);
 		expect(strangerApprove.status()).toBe(403);
