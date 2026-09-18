@@ -14,3 +14,4 @@ export const forbidden = (message: string) => new AppError(403, message);
 export const notFound = (message: string) => new AppError(404, message);
 export const conflict = (message: string) => new AppError(409, message);
 export const tooMany = (message: string) => new AppError(429, message);
+export const upstream = (message: string) => new AppError(502, message);

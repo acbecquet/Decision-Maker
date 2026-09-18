@@ -5,6 +5,7 @@ import { notFound } from './errors';
 import { findEventByCode, listOptions, refreshState, toEventView } from './events';
 import { countByStatus, countSubmitted, getMine, listRoster } from './participants';
 import { isHost, participantFromRequest } from './roles';
+import type { Report, ReportView } from '$lib/shared/report';
 import type { EventPageView } from '$lib/shared/types';
 
 /** Loads the event by public code, applying a passed auto-close deadline on the way. */
@@ -33,5 +34,27 @@ export function buildEventPageView(db: Db, event: EventRow, request: Request): E
 			tallies: event.rosterFinal && event.aggregates ? presentTallies(event.aggregates) : null,
 			hasDraft: event.report !== null
 		}
+	};
+}
+
+/**
+ * The report for whoever may see it: the host at any time once a draft exists, an approved
+ * participant once published. Everyone else gets the same 404, which reveals nothing about their status.
+ */
+export function buildReportView(db: Db, event: EventRow, request: Request): ReportView {
+	const report = event.report as Report | null;
+	const host = isHost(event, request);
+	const participant = host ? undefined : participantFromRequest(db, event, request);
+	const approvedReader = event.state === 'published' && participant?.status === 'approved';
+	if (!report || !event.aggregates || !(host || approvedReader)) throw notFound('No report');
+	return {
+		title: event.title,
+		context: event.context,
+		currency: event.currency,
+		state: event.state,
+		publishedAt: event.publishedAt,
+		options: toEventView(event, listOptions(db, event.id)).options,
+		tallies: presentTallies(event.aggregates),
+		report
 	};
 }

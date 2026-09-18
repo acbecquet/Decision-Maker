@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import Database from 'better-sqlite3';
 import { createEventApi, optionIds, submitApi, token, viewApi } from './helpers';
 
 test.describe('events API', () => {
@@ -434,5 +435,163 @@ test.describe('roster and close API', () => {
 		expect(closed.event.rosterFinal).toBe(true);
 		expect(closed.host.pendingCount).toBe(0);
 		expect(closed.host.tallies).toEqual({ approvedCount: 0, breakdown: null });
+	});
+});
+
+test.describe('analysis API', () => {
+	test('runs the fake provider after close, gates the report, publishes, and purges', async ({
+		request
+	}) => {
+		const hostToken = token();
+		const host = { 'x-host-token': hostToken };
+		const code = await createEventApi(request, hostToken);
+		const ids = await optionIds(request, code);
+		const names = ['Ana', 'Ben', 'Cleo', 'Dev', 'Eli', 'Fay'];
+		const devices = names.map(() => token());
+		for (const [i, name] of names.entries()) {
+			const res = await submitApi(request, code, devices[i], {
+				name,
+				ranking: [ids[i % 4], ids[(i + 1) % 4]],
+				opinion: `SENTINEL-${name} has thoughts`
+			});
+			expect(res.status()).toBe(201);
+		}
+		const run = { provider: 'fake', key: 'demo', model: 'fake-fast' };
+
+		const providers = await request.get('/api/providers');
+		expect((await providers.json()).providers.map((p: { id: string }) => p.id)).toEqual([
+			'anthropic',
+			'openai',
+			'openrouter',
+			'fake'
+		]);
+
+		expect(
+			(await request.post(`/api/events/${code}/analysis`, { headers: host, data: run })).status()
+		).toBe(409);
+		expect(
+			(
+				await request.post(`/api/events/${code}/models`, {
+					data: { provider: 'fake', key: 'demo' }
+				})
+			).status()
+		).toBe(403);
+		const models = await request.post(`/api/events/${code}/models`, {
+			headers: host,
+			data: { provider: 'fake', key: 'demo' }
+		});
+		expect(models.status()).toBe(200);
+		expect((await models.json()).models[0]).toEqual({
+			id: 'fake-fast',
+			label: 'Fake (deterministic)'
+		});
+
+		const roster = (await viewApi(request, code, host)).body.host.roster as {
+			id: string;
+			name: string;
+		}[];
+		const fay = roster.find((r) => r.name === 'Fay')!;
+		await request.patch(`/api/events/${code}/participants/${fay.id}`, {
+			headers: host,
+			data: { status: 'rejected' }
+		});
+		const closed = await request.post(`/api/events/${code}/close`, {
+			headers: host,
+			data: { pending: 'approve' }
+		});
+		expect(closed.status()).toBe(200);
+		expect((await closed.json()).host.hasDraft).toBe(false);
+
+		const started = await request.post(`/api/events/${code}/analysis`, {
+			headers: host,
+			data: run
+		});
+		expect(started.status()).toBe(202);
+		let status = {
+			status: 'running',
+			done: 0,
+			total: 0,
+			hasDraft: false,
+			error: null as string | null
+		};
+		for (let i = 0; i < 40 && status.status === 'running'; i++) {
+			await new Promise((r) => setTimeout(r, 250));
+			status = await (await request.get(`/api/events/${code}/analysis`, { headers: host })).json();
+		}
+		expect(status).toMatchObject({ status: 'succeeded', hasDraft: true, error: null });
+		expect(status.done).toBe(status.total);
+		expect(status.total).toBe(6);
+
+		const draft = await request.get(`/api/events/${code}/report`, { headers: host });
+		expect(draft.status()).toBe(200);
+		const draftBody = await draft.json();
+		expect(Object.keys(draftBody).sort()).toEqual([
+			'context',
+			'currency',
+			'options',
+			'publishedAt',
+			'report',
+			'state',
+			'tallies',
+			'title'
+		]);
+		expect(draftBody.state).toBe('closed');
+		expect(ids).toContain(draftBody.report.best.optionId);
+		expect(draftBody.report.themes.length).toBeGreaterThanOrEqual(3);
+		expect(JSON.stringify(draftBody)).not.toContain('SENTINEL');
+		expect(
+			(
+				await request.get(`/api/events/${code}/report`, {
+					headers: { 'x-participant-token': devices[0] }
+				})
+			).status()
+		).toBe(404);
+
+		expect((await request.post(`/api/events/${code}/publish`)).status()).toBe(403);
+		const published = await request.post(`/api/events/${code}/publish`, { headers: host });
+		expect(published.status()).toBe(200);
+		expect((await published.json()).event.state).toBe('published');
+
+		const approved = await request.get(`/api/events/${code}/report`, {
+			headers: { 'x-participant-token': devices[0] }
+		});
+		expect(approved.status()).toBe(200);
+		expect((await approved.json()).report.best.optionId).toBe(draftBody.report.best.optionId);
+		expect(
+			(
+				await request.get(`/api/events/${code}/report`, {
+					headers: { 'x-participant-token': devices[5] }
+				})
+			).status()
+		).toBe(404);
+		expect((await request.get(`/api/events/${code}/report`)).status()).toBe(404);
+		expect(
+			(await request.post(`/api/events/${code}/analysis`, { headers: host, data: run })).status()
+		).toBe(409);
+		expect((await request.post(`/api/events/${code}/publish`, { headers: host })).status()).toBe(
+			409
+		);
+
+		const dbFile = new Database('e2e/.tmp/e2e.db', { fileMustExist: true });
+		try {
+			const count = (sql: string) => (dbFile.prepare(sql).get(code) as { n: number }).n;
+			expect(
+				count(
+					'SELECT count(*) AS n FROM responses r JOIN participants p ON p.id = r.participant_id JOIN events e ON e.id = p.event_id WHERE e.code = ?'
+				)
+			).toBe(0);
+			expect(
+				count(
+					'SELECT count(*) AS n FROM anonymized_points a JOIN events e ON e.id = a.event_id WHERE e.code = ?'
+				)
+			).toBe(0);
+			expect(
+				count(
+					'SELECT count(*) AS n FROM participants p JOIN events e ON e.id = p.event_id WHERE e.code = ?'
+				)
+			).toBe(6);
+		} finally {
+			dbFile.close();
+		}
 	});
 });
