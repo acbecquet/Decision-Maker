@@ -168,4 +168,29 @@ describe('openaiProvider.completeJson', () => {
 		}))) as ProviderError;
 		expect(down.retryable).toBe(true);
 	});
+
+	it('falls back to text mode when the strict schema guess is rejected', async () => {
+		const { fetch, calls } = fakeFetch((req) => {
+			if (req.body?.response_format) {
+				return {
+					status: 400,
+					body: {
+						error: {
+							message: 'response_format is not supported for this model',
+							type: 'invalid_request_error'
+						}
+					}
+				};
+			}
+			return { status: 200, body: completion('Sure, here you go:\n{"points":[]}') };
+		});
+		const out = await createOpenAiProvider({ fetch }).completeJson(request());
+		expect(out).toEqual({ points: [] });
+		expect(calls).toHaveLength(2);
+		expect(calls[0].body?.response_format).toBeDefined();
+		expect(calls[1].body?.response_format).toBeUndefined();
+		const system = (calls[1].body?.messages as { role: string; content: string }[])[0].content;
+		expect(system).toContain('sys');
+		expect(system).toContain('"additionalProperties":false');
+	});
 });

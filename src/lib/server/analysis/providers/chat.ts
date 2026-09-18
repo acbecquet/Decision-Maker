@@ -51,6 +51,10 @@ function mapError(e: unknown, key: string, name: string): ProviderError {
 const mentionsEffort = (e: unknown) =>
 	e instanceof OpenAI.BadRequestError && /reasoning|effort/i.test(e.message);
 
+const mentionsSchema = (e: unknown) =>
+	e instanceof OpenAI.BadRequestError &&
+	/response_format|json_schema|structured|schema/i.test(e.message);
+
 export function createChatProvider(config: ChatProviderConfig): ModelProvider {
 	const client = (key: string, timeout: number = ANALYSIS.stageTimeoutMs.anonymize) =>
 		new OpenAI({
@@ -74,40 +78,67 @@ export function createChatProvider(config: ChatProviderConfig): ModelProvider {
 		},
 
 		async completeJson(req: JsonRequest) {
-			const strict = await config.supportsSchema(req.model);
-			const system = strict
-				? req.system
-				: `${req.system}\n\nRespond with only a JSON object that matches this JSON schema, with no prose before or after it:\n${JSON.stringify(req.schema)}`;
-			const effort = await config.effortFields(req.model, req.effort);
-			const body = (withEffort: boolean): OpenAI.Chat.ChatCompletionCreateParamsNonStreaming => {
-				const params: Record<string, unknown> = {
-					model: req.model,
-					messages: [
-						{ role: 'system', content: system },
-						{ role: 'user', content: req.user }
-					],
-					[config.tokensField]: req.maxTokens,
-					...(strict
-						? {
-								response_format: {
-									type: 'json_schema',
-									json_schema: { name: req.schemaName, strict: true, schema: req.schema }
-								}
-							}
-						: {}),
-					...(withEffort ? effort : {})
-				};
-				return params as unknown as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
-			};
 			const openai = client(req.key, ANALYSIS.stageTimeoutMs[req.payload.stage]);
 			let completion: OpenAI.Chat.ChatCompletion;
 			try {
-				try {
-					completion = await openai.chat.completions.create(body(true), { signal: req.signal });
-				} catch (e) {
-					if (!mentionsEffort(e) || Object.keys(effort).length === 0) throw e;
-					completion = await openai.chat.completions.create(body(false), { signal: req.signal });
-				}
+				const initialStrict = await config.supportsSchema(req.model);
+				const effort = await config.effortFields(req.model, req.effort);
+
+				const body = (
+					withEffort: boolean,
+					strict: boolean
+				): OpenAI.Chat.ChatCompletionCreateParamsNonStreaming => {
+					const system = strict
+						? req.system
+						: `${req.system}\n\nRespond with only a JSON object that matches this JSON schema, with no prose before or after it:\n${JSON.stringify(req.schema)}`;
+					const params: Record<string, unknown> = {
+						model: req.model,
+						messages: [
+							{ role: 'system', content: system },
+							{ role: 'user', content: req.user }
+						],
+						[config.tokensField]: req.maxTokens,
+						...(strict
+							? {
+									response_format: {
+										type: 'json_schema',
+										json_schema: { name: req.schemaName, strict: true, schema: req.schema }
+									}
+								}
+							: {}),
+						...(withEffort ? effort : {})
+					};
+					return params as unknown as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
+				};
+
+				// Each fallback fires at most once; they compose regardless of which trips first.
+				const attempt = async (
+					withEffort: boolean,
+					strict: boolean,
+					effortFallbackLeft: boolean,
+					schemaFallbackLeft: boolean
+				): Promise<OpenAI.Chat.ChatCompletion> => {
+					try {
+						return await openai.chat.completions.create(body(withEffort, strict), {
+							signal: req.signal
+						});
+					} catch (e) {
+						if (
+							withEffort &&
+							effortFallbackLeft &&
+							Object.keys(effort).length > 0 &&
+							mentionsEffort(e)
+						) {
+							return attempt(false, strict, false, schemaFallbackLeft);
+						}
+						if (strict && schemaFallbackLeft && mentionsSchema(e)) {
+							return attempt(withEffort, false, effortFallbackLeft, false);
+						}
+						throw e;
+					}
+				};
+
+				completion = await attempt(true, initialStrict, true, true);
 			} catch (e) {
 				throw mapError(e, req.key, config.name);
 			}

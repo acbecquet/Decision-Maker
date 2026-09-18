@@ -105,6 +105,24 @@ describe('openrouterProvider.listModels', () => {
 		expect(calls[0].url).toBe('https://openrouter.ai/api/v1/models');
 		expect(calls[0].headers.get('authorization')).toBe('Bearer sk-or-v1-testkey-12345678');
 	});
+
+	it('never caches an unusable catalogue body, so a later fetch can still succeed', async () => {
+		let fetches = 0;
+		const { fetch } = fakeFetch((req) => {
+			if (!req.url.endsWith('/models')) return { status: 200, body: completion('{"a":1}') };
+			fetches++;
+			return fetches === 1 ? { status: 200, body: { nope: 1 } } : { status: 200, body: catalogue };
+		});
+		const provider = createOpenRouterProvider({ fetch });
+		const bad = (await provider
+			.listModels('sk-or-v1-testkey-12345678')
+			.catch((e) => e)) as ProviderError;
+		expect(bad).toBeInstanceOf(ProviderError);
+		expect(bad.retryable).toBe(true);
+		const models = await provider.listModels('sk-or-v1-testkey-12345678');
+		expect(models.length).toBeGreaterThan(0);
+		expect(fetches).toBe(2);
+	});
 });
 
 describe('openrouterProvider.completeJson', () => {
@@ -168,5 +186,89 @@ describe('openrouterProvider.completeJson', () => {
 		expect(limited.retryable).toBe(true);
 		const badKey = (await p(401, 'No auth credentials found')) as ProviderError;
 		expect(badKey.message).toMatch(/rejected the key/);
+	});
+
+	it('falls back to text mode when the strict schema guess is rejected', async () => {
+		let completions = 0;
+		const { fetch, calls } = fakeFetch((req) => {
+			if (req.url.endsWith('/models')) return { status: 200, body: catalogue };
+			completions++;
+			if (completions === 1) {
+				return {
+					status: 400,
+					body: { error: { message: 'response_format is not supported for this model' } }
+				};
+			}
+			return { status: 200, body: completion('Sure, here you go:\n{"a":3}') };
+		});
+		const out = await createOpenRouterProvider({ fetch }).completeJson(request());
+		expect(out).toEqual({ a: 3 });
+		const completionCalls = calls.filter((c) => c.url.endsWith('/chat/completions'));
+		expect(completionCalls).toHaveLength(2);
+		expect(completionCalls[0].body?.response_format).toBeDefined();
+		expect(completionCalls[1].body?.response_format).toBeUndefined();
+		const system = (completionCalls[1].body?.messages as { role: string; content: string }[])[0]
+			.content;
+		expect(system).toContain('sys');
+		expect(system).toContain('"additionalProperties":false');
+	});
+});
+
+describe('openrouterProvider catalogue resilience', () => {
+	it('treats a 429 catalogue as retryable and still completes using the unknown-model defaults', async () => {
+		const { fetch, calls } = fakeFetch((req) =>
+			req.url.endsWith('/models')
+				? { status: 429, body: { error: { message: 'Rate limited' } } }
+				: { status: 200, body: completion('{"a":1}') }
+		);
+		const provider = createOpenRouterProvider({ fetch });
+		const out = await provider.completeJson(request());
+		expect(out).toEqual({ a: 1 });
+		const call = calls.find((c) => c.url.endsWith('/chat/completions'))!;
+		expect(call.body?.response_format).toEqual({
+			type: 'json_schema',
+			json_schema: { name: 'synthesize', strict: true, schema: request().schema }
+		});
+		expect(call.body?.reasoning).toEqual({ effort: 'max', exclude: true });
+		const err = (await provider
+			.listModels('sk-or-v1-testkey-12345678')
+			.catch((e) => e)) as ProviderError;
+		expect(err).toBeInstanceOf(ProviderError);
+		expect(err.retryable).toBe(true);
+	});
+
+	it('shares one in-flight catalogue fetch across concurrent completions', async () => {
+		const { fetch, calls } = fakeFetch((req) =>
+			req.url.endsWith('/models')
+				? { status: 200, body: catalogue }
+				: { status: 200, body: completion('{"a":1}') }
+		);
+		const provider = createOpenRouterProvider({ fetch });
+		const results = await Promise.all([
+			provider.completeJson(request()),
+			provider.completeJson(request()),
+			provider.completeJson(request())
+		]);
+		expect(results).toEqual([{ a: 1 }, { a: 1 }, { a: 1 }]);
+		expect(calls.filter((c) => c.url.endsWith('/models'))).toHaveLength(1);
+	});
+
+	it('recovers from a network failure fetching the catalogue', async () => {
+		const fetchImpl = async (input: string | URL | Request): Promise<Response> => {
+			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+			if (url.endsWith('/models')) throw new TypeError('fetch failed');
+			return new Response(JSON.stringify(completion('{"a":1}')), {
+				status: 200,
+				headers: { 'content-type': 'application/json' }
+			});
+		};
+		const provider = createOpenRouterProvider({ fetch: fetchImpl as typeof fetch });
+		const out = await provider.completeJson(request());
+		expect(out).toEqual({ a: 1 });
+		const err = (await provider
+			.listModels('sk-or-v1-testkey-12345678')
+			.catch((e) => e)) as ProviderError;
+		expect(err).toBeInstanceOf(ProviderError);
+		expect(err).not.toBeInstanceOf(TypeError);
 	});
 });
