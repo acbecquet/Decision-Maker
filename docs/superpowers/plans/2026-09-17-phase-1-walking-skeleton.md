@@ -23,7 +23,7 @@ Copied from the spec. Every task's requirements implicitly include this section.
 - Roster rows carry no timestamps and are sorted by name.
 - While open the host sees only the submitted count, never per-option numbers.
 - The host's own response is auto-approved.
-- Rate limits: 10 submissions per minute per IP per event, 20 event creations per hour per IP.
+- Rate limits: 10 submissions per minute per IP per event, 20 event creations per hour per IP. The e2e server sets `RATE_LIMIT_SCALE=10` so a full suite run cannot exhaust them; production leaves it unset.
 - Each event expires 90 days after creation (publish changes this in Phase 2).
 - No API route returns a response row to anyone but the participant who wrote it. The only read-all function lives in `src/lib/server/analysis/responses.ts`.
 - UI copy is sentence case, no exclamation marks, no em dashes anywhere in the repo, and commit messages carry no co-author line.
@@ -241,6 +241,7 @@ export default defineConfig({
 			ORIGIN: `http://localhost:${port}`,
 			DATABASE_URL: 'e2e/.tmp/e2e.db',
 			ALLOW_FAKE_PROVIDER: '1',
+			RATE_LIMIT_SCALE: '10',
 			NODE_ENV: 'production'
 		}
 	}
@@ -2501,7 +2502,7 @@ Create `src/lib/server/ratelimit.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { RateLimiter } from './ratelimit';
+import { RateLimiter, rateLimitScale } from './ratelimit';
 
 describe('RateLimiter', () => {
 	it('allows up to the limit inside the window and refuses after', () => {
@@ -2527,6 +2528,15 @@ describe('RateLimiter', () => {
 		limiter.allow('k', 1, 1_000, 0);
 		limiter.prune(10_000, 5_000);
 		expect(limiter.size).toBe(0);
+	});
+});
+
+describe('rateLimitScale', () => {
+	it('defaults to 1 and only accepts a multiplier of at least 1', () => {
+		expect(rateLimitScale({})).toBe(1);
+		expect(rateLimitScale({ RATE_LIMIT_SCALE: '10' })).toBe(10);
+		expect(rateLimitScale({ RATE_LIMIT_SCALE: '0' })).toBe(1);
+		expect(rateLimitScale({ RATE_LIMIT_SCALE: 'abc' })).toBe(1);
 	});
 });
 ```
@@ -2566,9 +2576,18 @@ export class RateLimiter {
 
 export const limiter = new RateLimiter();
 
+/**
+ * Multiplies every limit. Test suites set RATE_LIMIT_SCALE so a long run cannot exhaust the
+ * per-IP limits; production leaves it unset, which means 1.
+ */
+export function rateLimitScale(env: NodeJS.ProcessEnv = process.env): number {
+	const parsed = Number(env.RATE_LIMIT_SCALE);
+	return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1;
+}
+
 /** Throws a 429 AppError when the key has exceeded its limit. */
 export function enforce(key: string, limit: number, windowMs: number): void {
-	if (!limiter.allow(key, limit, windowMs)) {
+	if (!limiter.allow(key, limit * rateLimitScale(), windowMs)) {
 		throw tooMany('Too many requests, try again in a moment');
 	}
 }
