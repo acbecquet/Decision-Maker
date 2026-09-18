@@ -25,7 +25,7 @@ The report is stored as self-contained JSON with quote text embedded and rendere
 - Thinking effort is one of `low`, `medium`, `high`, `max`, default `max`. Anthropic maps it to `output_config.effort`, OpenAI to `reasoning_effort` (with `max` sent as `high`), OpenRouter to `reasoning: { effort, exclude: true }`.
 - Default models: Anthropic `claude-opus-5`; OpenAI the first of `gpt-5.6`, `gpt-5.6-sol`, `gpt-6-astra` present in the live list; OpenRouter `~deepseek/deepseek-pro-latest` when present, otherwise `anthropic/claude-opus-5`.
 - Publishing deletes every `responses` and `anonymized_points` row of the event in the same transaction that sets `state = 'published'`, `published_at`, and `expires_at` ninety days later. Participants remain.
-- Rate limit: three analysis runs per ten minutes per event, enforced with the existing `enforce` helper.
+- Rate limit: six analysis runs per ten minutes per event, enforced with the existing `enforce` helper.
 - Prompts are versioned; the report records `promptVersion`, `provider`, and `model`.
 - Copy rule: no explanatory prose that states the obvious. Headings, labels, and buttons over paragraphs. The publish dialog carries exactly one sentence of consequence: "Raw rankings and opinions are deleted, and approved participants see the report."
 - Navigation uses `goto(resolve(...))`; seed `$state` from props through `untrack`; no em dashes; commit messages carry no co-author or generated-by lines.

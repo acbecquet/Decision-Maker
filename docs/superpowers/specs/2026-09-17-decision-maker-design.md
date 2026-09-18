@@ -395,7 +395,7 @@ Each guarantee names where it is enforced.
 2. Numbers appear only after the roster is final, and suppression is one shared function.
 3. Tokens are 256-bit random values from the platform's crypto, stored as SHA-256 hashes, sent in headers, never in URLs, never logged, compared in constant time.
 4. Keys travel in request bodies over HTTPS, live in memory, are redacted from logs and errors, and are never written to the database.
-5. Rate limits: sixty submissions per minute per IP per event, twenty event creations or edits per hour per IP, five magic-link sends per hour per address and twenty per hour per IP, three analysis runs per ten minutes per event.
+5. Rate limits: sixty submissions per minute per IP per event, twenty event creations or edits per hour per IP, five magic-link sends per hour per address and twenty per hour per IP, six analysis runs per ten minutes per event.
    Request bodies are capped in size.
 6. No third-party scripts, no analytics, and no cookies for participants.
    Only the host's account session uses a cookie, so there is no consent banner.
