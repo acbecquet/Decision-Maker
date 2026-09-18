@@ -36,6 +36,7 @@ export function ensureToken(code: string, role: TokenRole): string {
 
 /** Re-keys a token when an event's code changes, so the device keeps its role under the new link. */
 export function moveToken(from: string, to: string, role: TokenRole): void {
+	if (from === to) return;
 	const token = getToken(from, role);
 	if (!token) return;
 	setToken(to, role, token);

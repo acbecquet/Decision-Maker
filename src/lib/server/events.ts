@@ -59,10 +59,12 @@ export function createEvent(
  * Allowed only while the event is open and nobody has submitted.
  * The guard reads the live row inside the transaction, so a submission that lands during body
  * parsing is honoured, and the host token hash is untouched so the creating device stays the host.
+ * A passed auto-close deadline is applied first, so the guard does not depend on the caller.
+ * Option rows get fresh ids on every save, which is safe only because no response can refer to them yet.
  */
 export function updateEvent(db: Db, event: EventRow, input: CreateEventInput): EventRow {
 	return db.transaction((tx) => {
-		const current = getEventById(tx, event.id);
+		const current = refreshState(tx, getEventById(tx, event.id));
 		if (current.state !== 'open') throw conflict('Submissions are closed');
 		const submitted =
 			tx.select({ n: count() }).from(participants).where(eq(participants.eventId, current.id)).get()

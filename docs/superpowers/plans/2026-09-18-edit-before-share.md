@@ -736,3 +736,19 @@ Expected: all green, including the existing create, host, participant, story, an
 git add src/lib/components/EventForm.svelte src/lib/client/datetime.ts "src/routes/e/[code]/edit/+page.ts" "src/routes/e/[code]/edit/+page.svelte" src/routes/+page.svelte src/lib/client/tokens.ts src/lib/client/tokens.test.ts src/lib/components/LinkScreen.svelte src/lib/components/HostView.svelte src/app.css e2e/create.e2e.ts
 git commit -m "Add the edit page with a back arrow on the link screen and an edit button in the host view"
 ```
+
+---
+
+## Deviations after review
+
+The task reviews and the branch review changed the code in these ways, and the code is the source of truth over the steps above.
+
+- `LinkScreen` takes a `canEdit` prop and shows the "← Edit event" button only when it is true; the event page passes `canEdit={view.event.state === 'open' && view.host?.submittedCount === 0}`.
+- `moveToken` returns early when the old and new codes are the same, and removes the old key only after reading the token back from the new key, so a failed write cannot strand the host.
+- `.link-btn` keeps the borderless text look but is an inline-flex box with `min-height: 40px`, so the tap target matches every other button.
+- `updateEvent` applies a passed auto-close deadline through `refreshState` before checking the state, so the guard does not depend on the caller having refreshed the row.
+- `EventForm` seeds the currency only when the stored value is one of `CURRENCIES`, otherwise `EUR`.
+- The save hop to the new link screen uses `replaceState`, so the browser's Back does not land on the dead edit page.
+- The end-to-end scenario also round-trips an option note and cost through the prefilled form, covers Cancel from both entry points, and checks the values persist across a second visit to the edit page.
+
+Deferred, recorded in the ledger: one shared future-deadline guard for the three handlers that repeat it, a `fromLocalInput` next to `toLocalInput`, a test for the PUT route's past-deadline 400, and a deliberate decision on whether an edit should restart the ninety-day expiry.

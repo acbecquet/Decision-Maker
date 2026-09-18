@@ -26,7 +26,11 @@
 
 	let title = $state(seed?.title ?? '');
 	let context = $state(seed?.context ?? '');
-	let currency = $state<Currency>((seed?.currency as Currency | undefined) ?? 'EUR');
+	let currency = $state<Currency>(
+		seed && (CURRENCIES as readonly string[]).includes(seed.currency)
+			? (seed.currency as Currency)
+			: 'EUR'
+	);
 	let options = $state<OptionDraft[]>(
 		seed
 			? seed.options.map((o) => ({

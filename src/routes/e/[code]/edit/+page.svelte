@@ -43,7 +43,7 @@
 			code
 		});
 		moveToken(code, next, 'host');
-		await goto(resolve('/e/[code]?created=1', { code: next }));
+		await goto(resolve('/e/[code]?created=1', { code: next }), { replaceState: true });
 	}
 </script>
 
