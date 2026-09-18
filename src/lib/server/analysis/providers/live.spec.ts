@@ -7,12 +7,14 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import type { ThinkingEffort } from '$lib/shared/report';
 import { anonymizePrompt, synthesizePrompt, type SynthesizeInput } from '../prompts';
 import { ANONYMIZE_SCHEMA, SYNTHESIZE_SCHEMA, anonymizeOutput, synthesizeOutput } from '../schemas';
 import { createOpenRouterProvider } from './openrouter';
 
 const keyFile = process.env.LIVE_KEY_FILE;
 const model = process.env.LIVE_MODEL ?? '~deepseek/deepseek-pro-latest';
+const effort = (process.env.LIVE_EFFORT ?? 'max') as ThinkingEffort;
 
 const options = [
 	{ id: 'o1', label: 'Tapas crawl in El Born', note: 'Central, easy to split', cost: 25 },
@@ -44,7 +46,7 @@ describe.skipIf(!keyFile)('live OpenRouter spot-check', () => {
 		const raw = await provider.completeJson({
 			key,
 			model,
-			effort: 'max',
+			effort,
 			system,
 			user,
 			schemaName: 'anonymize',
@@ -146,7 +148,7 @@ describe.skipIf(!keyFile)('live OpenRouter spot-check', () => {
 		const raw = await provider.completeJson({
 			key,
 			model,
-			effort: 'max',
+			effort,
 			system,
 			user,
 			schemaName: 'synthesize',
