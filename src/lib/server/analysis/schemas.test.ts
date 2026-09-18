@@ -28,11 +28,14 @@ describe('provider JSON schemas', () => {
 });
 
 describe('anonymizeOutput', () => {
-	it('accepts a list of typed points and rejects unknown types or extra keys', () => {
+	it('accepts typed points, strips unknown keys, and rejects unknown types', () => {
 		const ok = anonymizeOutput.safeParse({
-			points: [{ text: 'One person prefers a central place.', type: 'reason', optionIds: ['a'] }]
+			points: [
+				{ text: 'One person prefers a central place.', type: 'reason', optionIds: ['a'], extra: 1 }
+			]
 		});
 		expect(ok.success).toBe(true);
+		if (ok.success) expect(ok.data.points[0]).not.toHaveProperty('extra');
 		expect(anonymizeOutput.safeParse({ points: [] }).success).toBe(true);
 		expect(
 			anonymizeOutput.safeParse({ points: [{ text: 'x', type: 'joke', optionIds: [] }] }).success
