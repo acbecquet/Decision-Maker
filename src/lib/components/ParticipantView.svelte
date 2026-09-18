@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { api, ApiError } from '$lib/client/api';
 	import type { ReportView as ReportData } from '$lib/shared/report';
 	import type { EventPageView } from '$lib/shared/types';
@@ -16,10 +17,9 @@
 	let editing = $state(false);
 
 	let report = $state<ReportData | null>(null);
-	// svelte-ignore state_referenced_locally -- deliberate: this seeds the initial state from the
-	// event state at mount only; every later transition is driven explicitly by the $effect below.
+	// Seeded once at mount; every later transition is driven explicitly by the $effect below.
 	let reportState = $state<'loading' | 'shown' | 'hidden' | 'error'>(
-		view.event.state === 'published' ? 'loading' : 'hidden'
+		untrack(() => (view.event.state === 'published' ? 'loading' : 'hidden'))
 	);
 	let reportRequested = false;
 
