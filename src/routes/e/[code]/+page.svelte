@@ -4,6 +4,7 @@
 	import { api, ApiError } from '$lib/client/api';
 	import HostView from '$lib/components/HostView.svelte';
 	import LinkScreen from '$lib/components/LinkScreen.svelte';
+	import ParticipantView from '$lib/components/ParticipantView.svelte';
 	import type { EventPageView } from '$lib/shared/types';
 
 	const code = $derived(page.params.code ?? '');
@@ -39,9 +40,6 @@
 	{:else if view.role === 'host'}
 		<HostView {view} {code} onchange={load} />
 	{:else}
-		<h1>{view.event.title}</h1>
-		{#if view.event.context}
-			<p class="muted">{view.event.context}</p>
-		{/if}
+		<ParticipantView {view} {code} onchange={load} />
 	{/if}
 </main>

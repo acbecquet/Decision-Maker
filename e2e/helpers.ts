@@ -80,3 +80,37 @@ export async function newDevice(
 	const page = await context.newPage();
 	return { context, page };
 }
+
+export type Person = {
+	name: string;
+	/** Option labels in ranking order. Matched as a prefix, so "Tapas" matches "Tapas crawl". */
+	rank: string[];
+	veto?: string[];
+	/** Text of the budget chip to tap, for example "Up to €25" or "No limit". */
+	budget?: string;
+	opinion?: string;
+	suggestion?: string;
+};
+
+const startsWith = (label: string) =>
+	new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+
+/** Opens the link on a fresh device, fills the form as the given person, submits, and closes the device. */
+export async function submitViaUi(browser: Browser, code: string, person: Person): Promise<void> {
+	const { context, page } = await newDevice(browser);
+	await page.goto(`/e/${code}`);
+	await page.getByLabel('Your name').fill(person.name);
+	const unranked = page.getByTestId('unranked');
+	for (const label of person.rank) {
+		await unranked.getByRole('button', { name: startsWith(label) }).click();
+	}
+	for (const label of person.veto ?? []) {
+		await page.getByRole('button', { name: `Won't work for ${label}` }).click();
+	}
+	if (person.budget) await page.getByRole('button', { name: person.budget }).click();
+	if (person.opinion) await page.getByLabel('Your opinion').fill(person.opinion);
+	if (person.suggestion) await page.getByLabel('Something not listed?').fill(person.suggestion);
+	await page.getByRole('button', { name: 'Submit', exact: true }).click();
+	await page.getByRole('heading', { name: `Thanks, ${person.name}` }).waitFor();
+	await context.close();
+}
