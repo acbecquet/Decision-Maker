@@ -37,6 +37,14 @@ describe('magic links and sessions', () => {
 		expect(() => redeemMagicLink(db, token, nonce, later(120_000))).toThrow(/already been used/);
 	});
 
+	it('refuses a link that predates the browser binding, whose row has no nonce hash', () => {
+		const db = makeDb();
+		const { token, nonce } = createMagicLink(db, 'a@b.co', t0);
+		db.update(magicLinks).set({ nonceHash: null }).run();
+		expect(() => redeemMagicLink(db, token, nonce, t0)).toThrow(/browser that asked for it/);
+		expect(db.select().from(magicLinks).get()?.usedAt).toBeNull();
+	});
+
 	it('rejects expired, unknown, and malformed links', () => {
 		const db = makeDb();
 		const { token, nonce } = createMagicLink(db, 'a@b.co', t0);
