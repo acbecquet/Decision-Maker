@@ -47,33 +47,35 @@ export function redeemMagicLink(
 	now = new Date()
 ): { sessionToken: string; accountId: string; email: string } {
 	if (!isTokenShape(token)) throw badRequest('This sign-in link is not valid');
-	const link = db
-		.select()
-		.from(magicLinks)
-		.where(eq(magicLinks.tokenHash, sha256Hex(token)))
-		.get();
-	if (!link) throw badRequest('This sign-in link is not valid');
-	if (link.usedAt) throw badRequest('This sign-in link has already been used');
-	if (link.expiresAt <= now.toISOString()) throw badRequest('This sign-in link has expired');
+	const hash = sha256Hex(token);
 	const nowIso = now.toISOString();
-	db.update(magicLinks)
-		.set({ usedAt: nowIso })
-		.where(eq(magicLinks.tokenHash, link.tokenHash))
-		.run();
-	let account = db.select().from(accounts).where(eq(accounts.email, link.email)).get();
-	if (!account) {
-		db.insert(accounts).values({ id: newId(), email: link.email, createdAt: nowIso }).run();
-		account = db.select().from(accounts).where(eq(accounts.email, link.email)).get()!;
-	}
-	const sessionToken = newSecret();
-	db.insert(sessions)
-		.values({
-			tokenHash: sha256Hex(sessionToken),
-			accountId: account.id,
-			expiresAt: addDays(now, SESSION_TTL_DAYS).toISOString()
-		})
-		.run();
-	return { sessionToken, accountId: account.id, email: account.email };
+	return db.transaction((tx) => {
+		const link = tx.select().from(magicLinks).where(eq(magicLinks.tokenHash, hash)).get();
+		if (!link) throw badRequest('This sign-in link is not valid');
+		if (link.usedAt) throw badRequest('This sign-in link has already been used');
+		if (link.expiresAt <= nowIso) throw badRequest('This sign-in link has expired');
+		// The single-use guard lives in the write itself, so two redemptions can never both succeed.
+		const claimed = tx
+			.update(magicLinks)
+			.set({ usedAt: nowIso })
+			.where(and(eq(magicLinks.tokenHash, hash), isNull(magicLinks.usedAt)))
+			.run();
+		if (claimed.changes === 0) throw badRequest('This sign-in link has already been used');
+		tx.insert(accounts)
+			.values({ id: newId(), email: link.email, createdAt: nowIso })
+			.onConflictDoNothing({ target: accounts.email })
+			.run();
+		const account = tx.select().from(accounts).where(eq(accounts.email, link.email)).get()!;
+		const sessionToken = newSecret();
+		tx.insert(sessions)
+			.values({
+				tokenHash: sha256Hex(sessionToken),
+				accountId: account.id,
+				expiresAt: addDays(now, SESSION_TTL_DAYS).toISOString()
+			})
+			.run();
+		return { sessionToken, accountId: account.id, email: account.email };
+	});
 }
 
 /** The account behind a session cookie value, or null when missing, malformed, unknown, or expired. */
