@@ -353,7 +353,7 @@ describe('startAnalysis', () => {
 	it('reports a timeout distinctly from an ordinary provider failure', async () => {
 		const db = makeDb();
 		const event = closedEvent(db);
-		expect(abortAnalysis(event.id, 'timeout')).toBe(false);
+		expect(abortAnalysis(event.id)).toBe(false);
 		const stub: ModelProvider = {
 			id: 'fake',
 			async listModels() {
@@ -374,9 +374,9 @@ describe('startAnalysis', () => {
 			stub,
 			new Date('2026-02-02T00:00:00.000Z')
 		);
-		expect(abortAnalysis(event.id, 'timeout')).toBe(true);
+		expect(abortAnalysis(event.id)).toBe(true);
 		await done;
-		expect(abortAnalysis(event.id, 'timeout')).toBe(false);
+		expect(abortAnalysis(event.id)).toBe(false);
 		const job = db.select().from(analysisJobs).where(eq(analysisJobs.id, jobId)).get()!;
 		expect(job.status).toBe('failed');
 		expect(job.error).toMatch(/took too long/);

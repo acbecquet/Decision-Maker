@@ -100,18 +100,23 @@ export function startAnalysis(
 			clearTimeout(timer);
 			running.delete(current.id);
 		})
-		.catch(() => undefined);
+		.catch((e: unknown) => {
+			console.error(
+				'analysis bookkeeping failed',
+				redact(e instanceof Error ? e.message : String(e), input.key)
+			);
+		});
 	return { jobId, done };
 }
 
 /**
- * Test support: makes the running job for an event behave as if its timeout had just fired,
- * without waiting for the real `ANALYSIS.jobTimeoutMs`. Returns false when no job is running.
+ * Test support only, never for a route: makes the running job for an event behave as if its timeout
+ * had just fired, without waiting for the real `ANALYSIS.jobTimeoutMs`. Returns false when no job is running.
  */
-export function abortAnalysis(eventId: string, reason: 'timeout'): boolean {
+export function abortAnalysis(eventId: string): boolean {
 	const entry = running.get(eventId);
 	if (!entry) return false;
-	if (reason === 'timeout') entry.timedOut = true;
+	entry.timedOut = true;
 	entry.controller.abort();
 	return true;
 }
@@ -202,7 +207,7 @@ async function runJob(
 				(raw) => anonymizeOutput.parse(raw)
 			);
 		} catch (e) {
-			// A sibling failed: stop the rest of the in-flight stage-1 calls through the shared signal.
+			// This call failed: stop the in-flight sibling calls through the shared signal.
 			controller.abort();
 			throw e;
 		}
