@@ -39,8 +39,15 @@
 	});
 
 	async function signOut() {
-		await api('/api/auth/signout', { method: 'POST' });
-		await goto(resolve('/'));
+		try {
+			await api('/api/auth/signout', { method: 'POST' });
+			await goto(resolve('/'));
+		} catch (err) {
+			error =
+				err instanceof ApiError
+					? err.message
+					: 'Could not sign out. Check your connection and try again.';
+		}
 	}
 </script>
 
