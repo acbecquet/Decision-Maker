@@ -2,6 +2,7 @@ import { ProviderError } from './contract';
 
 export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 	return new Promise((resolve) => {
+		if (signal?.aborted) return resolve();
 		const timer = setTimeout(done, ms);
 		function done() {
 			signal?.removeEventListener('abort', done);
@@ -29,6 +30,7 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions): Pr
 		} catch (e) {
 			const retryable = e instanceof ProviderError && e.retryable && attempt < opts.attempts;
 			if (!retryable) throw e;
+			if (opts.signal?.aborted) throw new ProviderError('The analysis was stopped', false);
 			await wait(opts.baseDelayMs * 4 ** (attempt - 1), opts.signal);
 		}
 	}

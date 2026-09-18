@@ -59,13 +59,25 @@ export function fakeSynthesize(input: SynthesizeInput): SynthesizeOutput {
 			.slice(0, 2)
 			.map((p) => p.id)
 	});
-	const themes = [
-		theme('reason', 'Why people lean this way', 'reasons'),
-		theme('condition', 'It depends', 'conditions'),
-		theme('constraint', 'Hard limits', 'constraints')
-	];
-	if (ofType('suggestion').length) themes.push(theme('suggestion', 'Other ideas', 'suggestions'));
 	const costLine = input.costMattersToSome || b?.cost ? ' Cost matters to part of the group.' : '';
+	const themes = [
+		['reason', 'Why people lean this way', 'reasons'],
+		['condition', 'It depends', 'conditions'],
+		['constraint', 'Hard limits', 'constraints'],
+		['suggestion', 'Other ideas', 'suggestions']
+	]
+		.filter(([type]) => ofType(type).length > 0)
+		.map(([type, title, noun]) => theme(type, title, noun));
+	const fillers = [
+		{
+			title: 'Where the group stands',
+			summary: `${name(best)} leads the ranking.`,
+			quotePointIds: []
+		},
+		{ title: 'The fallback', summary: `${name(runnerUp)} is the next best.`, quotePointIds: [] },
+		{ title: 'Cost', summary: costLine.trim() || 'Nobody flagged cost.', quotePointIds: [] }
+	];
+	while (themes.length < 3) themes.push(fillers[themes.length]);
 	return {
 		best: {
 			optionId: best,

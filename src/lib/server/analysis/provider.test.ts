@@ -120,6 +120,7 @@ describe('fakeSynthesize', () => {
 		expect(out.worst.optionId).toBe('o3');
 		expect(out.unexpected).toBeNull();
 		expect(out.themes.map((t) => t.quotePointIds)).toEqual([['p1'], ['p3'], []]);
+		expect(out.themes.some((t) => /^0 /.test(t.summary))).toBe(false);
 		expect(out.stillToSettle).toHaveLength(1);
 		expect(out.summary).toContain('Beach BBQ');
 	});

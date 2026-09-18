@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ProviderError } from './contract';
-import { withRetry } from './retry';
+import { sleep, withRetry } from './retry';
 
 describe('withRetry', () => {
 	it('retries retryable errors with growing delays and returns the first success', async () => {
@@ -55,6 +55,39 @@ describe('withRetry', () => {
 			)
 		).rejects.toThrow('boom');
 		expect(calls).toBe(2);
+	});
+
+	it('sleep returns at once when the signal is already aborted', async () => {
+		const controller = new AbortController();
+		controller.abort();
+		const started = Date.now();
+		await sleep(500, controller.signal);
+		expect(Date.now() - started).toBeLessThan(100);
+	});
+
+	it('stops after a failure once the signal has aborted, without waiting', async () => {
+		const controller = new AbortController();
+		let calls = 0;
+		let slept = false;
+		await expect(
+			withRetry(
+				async () => {
+					calls++;
+					controller.abort();
+					throw new ProviderError('rate limited', true);
+				},
+				{
+					attempts: 3,
+					baseDelayMs: 1,
+					signal: controller.signal,
+					sleep: async () => {
+						slept = true;
+					}
+				}
+			)
+		).rejects.toThrow(/stopped/);
+		expect(calls).toBe(1);
+		expect(slept).toBe(false);
 	});
 
 	it('stops when the signal is aborted', async () => {
