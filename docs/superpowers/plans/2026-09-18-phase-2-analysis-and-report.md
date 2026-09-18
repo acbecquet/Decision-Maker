@@ -4198,7 +4198,7 @@ test('the host runs the fake analysis, reads the draft, publishes, and only appr
 	await expect(page.getByText('Published', { exact: true })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Copy summary' })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Publish' })).toHaveCount(0);
-	await expect(report).toContainText(/published \d/);
+	await expect(report).toContainText(/published [A-Za-z]{3} \d{1,2}, \d{4}/);
 
 	const everything = (await Promise.all(bodies)).join('\n');
 	expect(everything).not.toContain('SENTINEL');
