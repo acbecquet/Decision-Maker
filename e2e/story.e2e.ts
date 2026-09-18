@@ -41,13 +41,17 @@ test('the whole Barcelona story through close, with the host never seeing a raw 
 }) => {
 	const host = await newDevice(browser);
 	const bodies: string[] = [];
-	host.page.on('response', async (res) => {
+	const pending: Promise<void>[] = [];
+	host.page.on('response', (res) => {
 		if (!res.url().includes('/api/')) return;
-		try {
-			bodies.push(await res.text());
-		} catch {
-			// A navigation can discard a body; nothing to record.
-		}
+		pending.push(
+			res.text().then(
+				(body) => {
+					bodies.push(body);
+				},
+				() => undefined
+			)
+		);
 	});
 
 	await host.page.goto('/');
@@ -88,9 +92,10 @@ test('the whole Barcelona story through close, with the host never seeing a raw 
 	await expect(
 		host.page.getByText('Tapas crawl beats every other option head to head.')
 	).toBeVisible();
-	await expect(host.page.getByText('5 of 5 set a limit.')).toBeVisible();
+	await expect(host.page.getByText('5 of 5 answered the budget question.')).toBeVisible();
 	await expect(host.page.getByText('over budget for 3')).toBeVisible();
 
+	await Promise.all(pending);
 	const everything = bodies.join('\n');
 	expect(everything).not.toContain('SENTINEL');
 	expect(everything).not.toContain('"ranking"');

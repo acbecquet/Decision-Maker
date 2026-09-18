@@ -6,6 +6,7 @@
 	import LinkCard from './LinkCard.svelte';
 	import ResponseForm from './ResponseForm.svelte';
 	import Roster from './Roster.svelte';
+	import SubmittedCard from './SubmittedCard.svelte';
 	import TalliesView from './TalliesView.svelte';
 
 	let {
@@ -21,6 +22,7 @@
 	);
 	let error = $state('');
 	let showForm = $state(false);
+	let editingOwn = $state(false);
 	let closesLocal = $state(untrack(() => toLocal(view.event.closesAt)));
 	let closeDialog: ReturnType<typeof CloseDialog> | undefined = $state();
 
@@ -44,6 +46,11 @@
 			return true;
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Something went wrong, try again';
+			try {
+				await onchange();
+			} catch {
+				// The error above is what the host needs to see.
+			}
 			return false;
 		}
 	}
@@ -81,8 +88,23 @@
 {#if host && event.state === 'open'}
 	<LinkCard {code} />
 
-	{#if view.mine}
-		<p class="small muted">Your own response is in.</p>
+	{#if view.mine && editingOwn}
+		<h2>Your response</h2>
+		<ResponseForm
+			{event}
+			{code}
+			mine={view.mine}
+			oncancel={() => (editingOwn = false)}
+			onsubmitted={async () => {
+				try {
+					await onchange();
+				} finally {
+					editingOwn = false;
+				}
+			}}
+		/>
+	{:else if view.mine}
+		<SubmittedCard {event} mine={view.mine} onedit={() => (editingOwn = true)} />
 	{:else if showForm}
 		<h2>Your response</h2>
 		<ResponseForm

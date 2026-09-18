@@ -91,6 +91,27 @@ describe('submitResponse', () => {
 			submitResponse(db, event, ids, device(1), response('Alex', [ids[0]]), { autoApprove: false })
 		).toThrow(/closed/);
 	});
+
+	it('refuses a submission or edit once the row is closed, even from a stale snapshot', () => {
+		const { db, event, ids } = setup();
+		const p = submitResponse(db, event, ids, device(1), response('Alex', [ids[0]]), {
+			autoApprove: false
+		});
+		stopSubmissions(db, event);
+		expect(() =>
+			submitResponse(db, event, ids, device(2), response('Sam', [ids[0]]), { autoApprove: false })
+		).toThrow(/closed/);
+		expect(() =>
+			updateResponse(db, event, ids, p, {
+				ranking: [ids[1]],
+				vetoes: [],
+				budget: null,
+				opinion: '',
+				suggestion: ''
+			})
+		).toThrow(/closed/);
+		expect(countSubmitted(db, event.id)).toBe(1);
+	});
 });
 
 describe('updateResponse', () => {

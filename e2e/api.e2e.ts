@@ -357,13 +357,13 @@ test.describe('roster and close API', () => {
 		const ids = await optionIds(request, code);
 		await submitApi(request, code, token(), { name: 'Ana', ranking: [ids[0]] });
 
-		const soon = new Date(Date.now() + 1500).toISOString();
+		const soon = new Date(Date.now() + 3000).toISOString();
 		const set = await request.patch(`/api/events/${code}`, {
 			headers: host,
 			data: { closesAt: soon }
 		});
 		expect(set.status()).toBe(200);
-		await new Promise((resolve) => setTimeout(resolve, 1700));
+		await new Promise((resolve) => setTimeout(resolve, 3200));
 
 		const view = (await viewApi(request, code, host)).body;
 		expect(view.event.state).toBe('closed');

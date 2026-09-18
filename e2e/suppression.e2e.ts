@@ -40,7 +40,7 @@ test('four approved responses show no breakdown, and small cost counts stay hidd
 	await five.page.getByRole('button', { name: 'Approve pending and close' }).click();
 	await expect(five.page.getByText('5 approved responses')).toBeVisible();
 	await expect(five.page.getByTestId(`first-${ids2[0]}`)).toHaveText('5');
-	await expect(five.page.getByText('5 of 5 set a limit.')).toBeVisible();
+	await expect(five.page.getByText('5 of 5 answered the budget question.')).toBeVisible();
 	await expect(five.page.getByText('over budget')).toHaveCount(0);
 	await five.context.close();
 });

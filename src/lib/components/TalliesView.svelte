@@ -89,7 +89,9 @@
 	{#if breakdown.cost}
 		<h3>Cost</h3>
 		{#if breakdown.cost.answered !== null}
-			<p class="small muted">{breakdown.cost.answered} of {tallies.approvedCount} set a limit.</p>
+			<p class="small muted">
+				{breakdown.cost.answered} of {tallies.approvedCount} answered the budget question.
+			</p>
 		{/if}
 		{#each breakdown.cost.rows as c (c.optionId)}
 			<div class="bar">

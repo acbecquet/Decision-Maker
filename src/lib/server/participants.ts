@@ -49,6 +49,7 @@ function responseColumns(input: EditResponseInput, nowIso: string) {
 	};
 }
 
+/** The open-state guard reads the live row, so a close that landed during body parsing is honoured. */
 export function submitResponse(
 	db: Db,
 	event: EventRow,
@@ -57,7 +58,7 @@ export function submitResponse(
 	input: ResponseInput,
 	opts: { autoApprove: boolean; now?: Date }
 ): ParticipantRow {
-	if (event.state !== 'open') throw conflict('Submissions are closed');
+	if (getEventById(db, event.id).state !== 'open') throw conflict('Submissions are closed');
 	const problem = checkOptionRefs(input.ranking, input.vetoes, optionIds);
 	if (problem) throw badRequest(problem);
 	if (findParticipantByDevice(db, event.id, deviceTokenHash)) {
@@ -91,7 +92,7 @@ export function updateResponse(
 	input: EditResponseInput,
 	now = new Date()
 ): void {
-	if (event.state !== 'open') throw conflict('Submissions are closed');
+	if (getEventById(db, event.id).state !== 'open') throw conflict('Submissions are closed');
 	const problem = checkOptionRefs(input.ranking, input.vetoes, optionIds);
 	if (problem) throw badRequest(problem);
 	db.update(responses)

@@ -77,7 +77,7 @@ test.describe('host', () => {
 		await expect(page.getByTestId(`over-${ids[2]}`)).toHaveText('over budget for 3');
 		await expect(page.getByTestId(`over-${ids[0]}`)).toHaveText('over budget for 3');
 		await expect(page.getByTestId(`over-${ids[1]}`)).toHaveCount(0);
-		await expect(page.getByText('6 of 6 set a limit.')).toBeVisible();
+		await expect(page.getByText('6 of 6 answered the budget question.')).toBeVisible();
 		await context.close();
 	});
 
@@ -95,7 +95,7 @@ test.describe('host', () => {
 			.getByRole('button', { name: /^Tapas crawl/ })
 			.click();
 		await page.getByRole('button', { name: 'Submit', exact: true }).click();
-		await expect(page.getByText('Your own response is in.')).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Thanks, Charlie' })).toBeVisible();
 		await expect(page.getByText('1 submitted')).toBeVisible();
 		await expect(
 			page.getByTestId('roster').getByRole('listitem').filter({ hasText: 'Charlie' })
@@ -111,12 +111,13 @@ test.describe('host', () => {
 		const code = await createEventApi(request, hostToken);
 		const ids = await optionIds(request, code);
 		await submitApi(request, code, token(), { name: 'Ana', ranking: [ids[0]] });
-		const soon = new Date(Date.now() + 1500).toISOString();
-		await request.patch(`/api/events/${code}`, {
+		const soon = new Date(Date.now() + 3000).toISOString();
+		const set = await request.patch(`/api/events/${code}`, {
 			headers: { 'x-host-token': hostToken },
 			data: { closesAt: soon }
 		});
-		await new Promise((resolve) => setTimeout(resolve, 1700));
+		expect(set.status()).toBe(200);
+		await new Promise((resolve) => setTimeout(resolve, 3200));
 
 		const { page, context } = await openAsHost(browser, code, hostToken);
 		await expect(page.getByText('Submissions closed automatically')).toBeVisible();

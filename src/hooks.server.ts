@@ -23,5 +23,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 	response.headers.set('x-content-type-options', 'nosniff');
 	response.headers.set('referrer-policy', 'no-referrer');
 	response.headers.set('x-frame-options', 'DENY');
+	if (event.url.pathname.startsWith('/api/')) response.headers.set('cache-control', 'no-store');
 	return response;
 };
