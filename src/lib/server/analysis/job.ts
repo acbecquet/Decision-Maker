@@ -23,7 +23,7 @@ import { ANONYMIZE_SCHEMA, SYNTHESIZE_SCHEMA, anonymizeOutput, synthesizeOutput 
 
 const MAX_TOKENS = { anonymize: 16_000, synthesize: 32_000 } as const;
 
-type Running = { jobId: string; controller: AbortController };
+type Running = { jobId: string; controller: AbortController; timedOut: boolean };
 /** One job per event at a time. The key lives only inside the running job's closure. */
 const running = new Map<string, Running>();
 
@@ -36,7 +36,7 @@ export function analysisStatus(db: DbLike, event: EventRow): AnalysisStatus {
 		.select()
 		.from(analysisJobs)
 		.where(eq(analysisJobs.eventId, event.id))
-		.orderBy(desc(analysisJobs.startedAt))
+		.orderBy(desc(analysisJobs.startedAt), desc(sql`rowid`))
 		.get();
 	const hasDraft = event.report !== null;
 	if (!row) return { status: 'idle', stage: null, done: 0, total: 0, error: null, hasDraft };
@@ -80,13 +80,17 @@ export function startAnalysis(
 		})
 		.run();
 	const controller = new AbortController();
-	running.set(current.id, { jobId, controller });
-	const timer = setTimeout(() => controller.abort(), ANALYSIS.jobTimeoutMs);
+	const entry: Running = { jobId, controller, timedOut: false };
+	running.set(current.id, entry);
+	const timer = setTimeout(() => {
+		entry.timedOut = true;
+		controller.abort();
+	}, ANALYSIS.jobTimeoutMs);
 	timer.unref();
 
-	const done = runJob(db, current, responses, input, provider, jobId, controller.signal)
+	const done = runJob(db, current, responses, input, provider, jobId, controller)
 		.catch((e: unknown) => {
-			const message = describeFailure(e, input.key, controller.signal.aborted);
+			const message = describeFailure(e, input.key, entry.timedOut);
 			db.update(analysisJobs)
 				.set({ status: 'failed', error: message, finishedAt: new Date().toISOString() })
 				.where(eq(analysisJobs.id, jobId))
@@ -95,12 +99,25 @@ export function startAnalysis(
 		.finally(() => {
 			clearTimeout(timer);
 			running.delete(current.id);
-		});
+		})
+		.catch(() => undefined);
 	return { jobId, done };
 }
 
-function describeFailure(e: unknown, key: string, aborted: boolean): string {
-	if (aborted) return 'The analysis took too long and was stopped';
+/**
+ * Test support: makes the running job for an event behave as if its timeout had just fired,
+ * without waiting for the real `ANALYSIS.jobTimeoutMs`. Returns false when no job is running.
+ */
+export function abortAnalysis(eventId: string, reason: 'timeout'): boolean {
+	const entry = running.get(eventId);
+	if (!entry) return false;
+	if (reason === 'timeout') entry.timedOut = true;
+	entry.controller.abort();
+	return true;
+}
+
+function describeFailure(e: unknown, key: string, timedOut: boolean): string {
+	if (timedOut) return 'The analysis took too long and was stopped';
 	if (e instanceof ProviderError) return redact(e.message, key);
 	console.error('analysis failed', redact(e instanceof Error ? e.message : String(e), key));
 	return 'The analysis failed, try again';
@@ -113,8 +130,9 @@ async function runJob(
 	input: RunAnalysisInput,
 	provider: ModelProvider,
 	jobId: string,
-	signal: AbortSignal
+	controller: AbortController
 ): Promise<void> {
+	const signal = controller.signal;
 	const options = toEventView(event, listOptions(db, event.id)).options;
 	const aggregates = event.aggregates!;
 	const knownOption = (id: string) => options.some((o) => o.id === id);
@@ -164,23 +182,30 @@ async function runJob(
 
 	const byParticipant = new Map<string, Point[]>();
 	await mapWithConcurrency(responses.filter(hasText), ANALYSIS.concurrency, async (r) => {
-		const out = await call(
-			{
-				stage: 'anonymize',
-				input: {
-					options,
-					currency: event.currency,
-					ranking: r.ranking,
-					vetoes: r.vetoes,
-					opinion: r.opinion,
-					suggestion: r.suggestion
-				}
-			},
-			'anonymize',
-			ANONYMIZE_SCHEMA,
-			MAX_TOKENS.anonymize,
-			(raw) => anonymizeOutput.parse(raw)
-		);
+		let out;
+		try {
+			out = await call(
+				{
+					stage: 'anonymize',
+					input: {
+						options,
+						currency: event.currency,
+						ranking: r.ranking,
+						vetoes: r.vetoes,
+						opinion: r.opinion,
+						suggestion: r.suggestion
+					}
+				},
+				'anonymize',
+				ANONYMIZE_SCHEMA,
+				MAX_TOKENS.anonymize,
+				(raw) => anonymizeOutput.parse(raw)
+			);
+		} catch (e) {
+			// A sibling failed: stop the rest of the in-flight stage-1 calls through the shared signal.
+			controller.abort();
+			throw e;
+		}
 		byParticipant.set(
 			r.participantId,
 			out.points.map((p) => ({
@@ -261,13 +286,24 @@ async function mapWithConcurrency<T>(
 	fn: (item: T) => Promise<void>
 ): Promise<void> {
 	let next = 0;
+	let failed = false;
+	let firstError: unknown;
 	const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-		while (next < items.length) {
+		while (next < items.length && !failed) {
 			const item = items[next++];
-			await fn(item);
+			try {
+				await fn(item);
+			} catch (e) {
+				if (!failed) {
+					failed = true;
+					firstError = e;
+				}
+				return;
+			}
 		}
 	});
 	await Promise.all(workers);
+	if (failed) throw firstError;
 }
 
 /** Fisher-Yates with platform randomness, so group order carries no information about who is who. */
