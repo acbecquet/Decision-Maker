@@ -114,3 +114,18 @@ export async function submitViaUi(browser: Browser, code: string, person: Person
 	await page.getByRole('heading', { name: `Thanks, ${person.name}` }).waitFor();
 	await context.close();
 }
+
+/** Opens the event on a fresh device that already holds the host token, as the creating device would. */
+export async function openAsHost(
+	browser: Browser,
+	code: string,
+	hostToken: string
+): Promise<{ context: BrowserContext; page: Page }> {
+	const device = await newDevice(browser);
+	await device.context.addInitScript(
+		([key, value]) => localStorage.setItem(key, value),
+		[`dm:${code}:host`, hostToken]
+	);
+	await device.page.goto(`/e/${code}`);
+	return device;
+}
