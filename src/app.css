@@ -411,3 +411,7 @@ dialog::backdrop {
 	padding: 6px;
 	border-radius: 6px;
 }
+
+a {
+	color: var(--accent);
+}
