@@ -54,7 +54,7 @@ export function fakeSynthesize(input: SynthesizeInput): SynthesizeOutput {
 	const ofType = (type: string) => points.filter((p) => p.type === type);
 	const theme = (type: string, title: string, noun: string) => ({
 		title,
-		summary: `${ofType(type).length} ${noun} came up.`,
+		summary: `${ofType(type).length} ${ofType(type).length === 1 ? noun.slice(0, -1) : noun} came up.`,
 		quotePointIds: ofType(type)
 			.slice(0, 2)
 			.map((p) => p.id)
