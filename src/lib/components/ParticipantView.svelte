@@ -25,8 +25,11 @@
 		mine={editing ? mine : null}
 		oncancel={editing ? () => (editing = false) : undefined}
 		onsubmitted={async () => {
-			await onchange();
-			editing = false;
+			try {
+				await onchange();
+			} finally {
+				editing = false;
+			}
 		}}
 	/>
 {:else if event.state === 'open' && mine}
