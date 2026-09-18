@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CURRENCIES, LIMITS } from './constants';
+import { CURRENCIES, EFFORTS, LIMITS, PROVIDER_IDS } from './constants';
 
 const trimmed = (max: number) => z.string().trim().max(max, `At most ${max} characters`);
 
@@ -54,9 +54,25 @@ export const patchEventInput = z.object({ closesAt: isoInstant.nullable() });
 
 export const participantStatusInput = z.object({ status: z.enum(['approved', 'rejected']) });
 
+const providerKey = z.string().min(1, 'Enter a key').max(4096);
+
+export const modelsInput = z.object({
+	provider: z.enum(PROVIDER_IDS, 'Unknown provider'),
+	key: providerKey
+});
+
+export const runAnalysisInput = z.object({
+	provider: z.enum(PROVIDER_IDS, 'Unknown provider'),
+	key: providerKey,
+	model: z.string().trim().min(1, 'Pick a model').max(200),
+	effort: z.enum(EFFORTS).default('max')
+});
+
 export type CreateEventInput = z.infer<typeof createEventInput>;
 export type ResponseInput = z.infer<typeof responseInput>;
 export type EditResponseInput = z.infer<typeof editResponseInput>;
+export type ModelsInput = z.infer<typeof modelsInput>;
+export type RunAnalysisInput = z.infer<typeof runAnalysisInput>;
 
 /** Returns a problem description, or null when every id refers to a known option exactly once. */
 export function checkOptionRefs(

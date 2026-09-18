@@ -66,6 +66,7 @@ export type HostView = {
 	pendingCount: number;
 	roster: RosterRow[];
 	tallies: PresentedTallies | null;
+	hasDraft: boolean;
 };
 
 export type EventPageView = {

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { checkOptionRefs, createEventInput, editResponseInput, responseInput } from './validation';
+import {
+	checkOptionRefs,
+	createEventInput,
+	editResponseInput,
+	modelsInput,
+	responseInput,
+	runAnalysisInput
+} from './validation';
 
 const validEvent = {
 	title: 'Saturday night',
@@ -96,6 +103,27 @@ describe('responseInput', () => {
 		const result = editResponseInput.safeParse({ name: 'ignored', ranking: ['a'] });
 		expect(result.success).toBe(true);
 		if (result.success) expect('name' in result.data).toBe(false);
+	});
+});
+
+describe('analysis inputs', () => {
+	it('accepts a provider, key, model, and effort, defaulting effort to max', () => {
+		expect(modelsInput.parse({ provider: 'openrouter', key: 'sk-or-x' })).toEqual({
+			provider: 'openrouter',
+			key: 'sk-or-x'
+		});
+		const run = runAnalysisInput.parse({ provider: 'fake', key: 'k', model: ' fake-fast ' });
+		expect(run).toEqual({ provider: 'fake', key: 'k', model: 'fake-fast', effort: 'max' });
+		expect(runAnalysisInput.safeParse({ provider: 'nope', key: 'k', model: 'm' }).success).toBe(
+			false
+		);
+		expect(runAnalysisInput.safeParse({ provider: 'fake', key: '', model: 'm' }).success).toBe(
+			false
+		);
+		expect(
+			runAnalysisInput.safeParse({ provider: 'fake', key: 'k', model: 'm', effort: 'ultra' })
+				.success
+		).toBe(false);
 	});
 });
 

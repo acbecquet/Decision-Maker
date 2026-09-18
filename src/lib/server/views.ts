@@ -30,7 +30,8 @@ export function buildEventPageView(db: Db, event: EventRow, request: Request): E
 			submittedCount: countSubmitted(db, event.id),
 			pendingCount: countByStatus(db, event.id, 'pending'),
 			roster: listRoster(db, event.id),
-			tallies: event.rosterFinal && event.aggregates ? presentTallies(event.aggregates) : null
+			tallies: event.rosterFinal && event.aggregates ? presentTallies(event.aggregates) : null,
+			hasDraft: event.report !== null
 		}
 	};
 }

@@ -35,6 +35,7 @@ test.describe('events API', () => {
 			'title'
 		]);
 		expect(Object.keys(asHost.body.host).sort()).toEqual([
+			'hasDraft',
 			'pendingCount',
 			'roster',
 			'submittedCount',

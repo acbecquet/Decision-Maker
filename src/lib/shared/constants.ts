@@ -46,3 +46,24 @@ export const EVENT_CODE_ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
 export const EVENT_CODE_LENGTH = 10;
 export const TOKEN_HEX_LENGTH = 64;
 export const EVENT_TTL_DAYS = 90;
+
+export const EFFORTS = ['low', 'medium', 'high', 'max'] as const;
+export const PROVIDER_IDS = ['anthropic', 'openai', 'openrouter', 'fake'] as const;
+
+export const ANALYSIS = {
+	/** Parallel stage-1 calls. */
+	concurrency: 4,
+	/** One model call. */
+	callTimeoutMs: 120_000,
+	/** The whole job. */
+	jobTimeoutMs: 900_000,
+	/** Attempts for retryable provider errors. */
+	attempts: 3,
+	/** Runs per event per ten minutes. */
+	runsPerWindow: 3,
+	runWindowMs: 600_000,
+	minThemes: 3,
+	maxThemes: 6,
+	maxQuotesPerTheme: 3,
+	maxPointsPerResponse: 12
+} as const;
