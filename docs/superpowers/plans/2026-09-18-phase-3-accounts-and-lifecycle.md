@@ -1463,3 +1463,20 @@ Expected: green.
 git add package.json package-lock.json src/lib/client/qr.ts src/lib/client/qr.test.ts src/lib/components/LinkCard.svelte src/lib/components/LinkScreen.svelte src/lib/components/HostView.svelte src/app.css e2e/create.e2e.ts
 git commit -m "Show a QR code and the share sheet on the link card"
 ```
+
+---
+
+## Deviations after review
+
+The task reviews, a security review, and the branch review changed the code in these ways, and the code is the source of truth over the steps above.
+
+- Magic links are bound to the requesting browser: `createMagicLink` also returns a nonce, the request route sets it as the httpOnly `dm_signin` cookie, the row stores its hash (migration `0001`), and `redeemMagicLink(db, token, nonce, now?)` refuses a mismatch after the used and expired checks, inside one transaction whose update carries the single-use guard.
+- `readJson` requires the `application/json` content type, so a cross-site request without a preflight cannot reach any JSON route.
+- The magic-link route enforces the IP limit before parsing the body, distinguishes the Resend sandbox restriction in its 502 message, and the session route clears the nonce cookie after success; sign-out clears the cookie before ending the session; the hook drops a cookie that no longer resolves.
+- Expired magic links and sessions are swept on the minute tick together with expired unowned events.
+- `DELETE /api/events/{code}` refuses while an analysis is running, and the delete dialog shows the server's message.
+- The unused `POST /api/me/claim` route was removed; claiming happens only at sign-in.
+- Sign-in replaces the history entry so the used link is not one tap back; a failed sign-out is shown; the share button reports a real failure and a QR code that cannot be drawn is simply absent.
+- `fly.toml` pins `ALLOW_MAIL_SINK = '0'` next to `ALLOW_FAKE_PROVIDER`.
+
+Deferred: an index on `host_token_hash`; a retry affordance on the my-events load failure; an accessible name for the QR code; moving the magic-link token from the query string to a fragment.
