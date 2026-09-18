@@ -17,10 +17,13 @@ export function costMattersToSome(agg: Aggregates): boolean {
 	return small(agg.cost.answered) || agg.cost.rows.some((r) => small(r.overBudget));
 }
 
+/** Model text in house style: plain dashes instead of em and en dashes. */
+const plain = (text: string) => text.replace(/\u2014|\u2013/g, '-');
+
 /**
- * Turns a validated synthesis into the stored report. Quote text is inserted verbatim from stage 1,
- * duplicate, unknown, and cost-tagged ids are dropped, and headline options must exist.
- * Throws a plain Error for an unusable answer so the caller can retry the call once.
+ * Turns a validated synthesis into the stored report. Quote text is inserted verbatim from stage 1
+ * apart from dash normalization, duplicate, unknown, and cost-tagged ids are dropped, and headline
+ * options must exist. Throws a plain Error for an unusable answer so the caller can retry the call once.
  */
 export function buildReport(
 	output: SynthesizeOutput,
@@ -35,12 +38,12 @@ export function buildReport(
 	}
 	const byId = new Map(points.map((p) => [p.id, p]));
 	const themes = output.themes.map((t) => ({
-		title: t.title,
-		summary: t.summary,
+		title: plain(t.title),
+		summary: plain(t.summary),
 		quotes: [...new Set(t.quotePointIds)]
 			.filter((id) => quotable.has(id) && byId.has(id))
 			.slice(0, ANALYSIS.maxQuotesPerTheme)
-			.map((id) => ({ pointId: id, text: byId.get(id)!.text }))
+			.map((id) => ({ pointId: id, text: plain(byId.get(id)!.text) }))
 	}));
 	let unexpected = output.unexpected;
 	if (unexpected?.kind === 'option') {
@@ -48,15 +51,26 @@ export function buildReport(
 	} else if (unexpected) {
 		unexpected = { ...unexpected, optionId: null };
 	}
+	if (unexpected) {
+		unexpected = {
+			...unexpected,
+			title: plain(unexpected.title),
+			rationale: plain(unexpected.rationale)
+		};
+	}
 	return {
 		version: 1,
-		best: output.best,
-		runnerUp: output.runnerUp,
-		worst: output.worst,
+		best: {
+			...output.best,
+			verdict: plain(output.best.verdict),
+			rationale: plain(output.best.rationale)
+		},
+		runnerUp: { ...output.runnerUp, rationale: plain(output.runnerUp.rationale) },
+		worst: { ...output.worst, rationale: plain(output.worst.rationale) },
 		unexpected,
 		themes,
-		stillToSettle: output.stillToSettle,
-		summary: output.summary,
+		stillToSettle: output.stillToSettle.map(plain),
+		summary: plain(output.summary),
 		...meta
 	};
 }

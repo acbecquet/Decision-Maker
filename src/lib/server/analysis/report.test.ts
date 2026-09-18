@@ -76,6 +76,23 @@ describe('buildReport', () => {
 		expect(suggestion.unexpected?.kind).toBe('suggestion');
 	});
 
+	it('replaces em and en dashes in model text with plain dashes', () => {
+		const dashed = buildReport(
+			{
+				...output,
+				summary: 'Tapas it is\u2014decide the time later\u2013soon.',
+				themes: output.themes.map((t) => ({ ...t, summary: 'Central\u2014or close.' }))
+			},
+			points,
+			quotable,
+			options,
+			meta
+		);
+		expect(dashed.summary).toBe('Tapas it is-decide the time later-soon.');
+		expect(dashed.themes[0].summary).toBe('Central-or close.');
+		expect(JSON.stringify(dashed)).not.toMatch(/\u2014|\u2013/);
+	});
+
 	it('rejects headline options the event does not have', () => {
 		expect(() =>
 			buildReport(
