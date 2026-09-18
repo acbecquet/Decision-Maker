@@ -1,5 +1,9 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { api, ApiError } from '$lib/client/api';
+	import type { ReportView as ReportData } from '$lib/shared/report';
 	import type { EventPageView } from '$lib/shared/types';
+	import ReportView from './ReportView.svelte';
 	import ResponseForm from './ResponseForm.svelte';
 	import SubmittedCard from './SubmittedCard.svelte';
 
@@ -11,6 +15,19 @@
 	const event = $derived(view.event);
 	const mine = $derived(view.mine);
 	let editing = $state(false);
+
+	let report = $state<ReportData | null>(null);
+	let reportState = $state<'loading' | 'shown' | 'hidden' | 'error'>('loading');
+
+	onMount(async () => {
+		if (view.event.state !== 'published') return;
+		try {
+			report = await api<ReportData>(`/api/events/${code}/report`, { code });
+			reportState = 'shown';
+		} catch (err) {
+			reportState = err instanceof ApiError && err.status === 404 ? 'hidden' : 'error';
+		}
+	});
 </script>
 
 <h1>{event.title}</h1>
@@ -41,6 +58,12 @@
 			<p class="muted">Results are on the way.</p>
 		{/if}
 	</div>
+{:else if reportState === 'shown' && report}
+	<ReportView view={report} />
+{:else if reportState === 'error'}
+	<p class="error" role="alert">Could not load the report. Check your connection and try again.</p>
+{:else if reportState === 'loading'}
+	<p class="muted">Loading</p>
 {:else}
 	<div class="card">
 		<p>The host shared results with the approved group.</p>

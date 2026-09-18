@@ -361,3 +361,33 @@ dialog::backdrop {
 	font-weight: 600;
 	margin-bottom: 4px;
 }
+
+.highlight {
+	border-color: var(--accent);
+}
+
+.pair {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+	margin: 12px 0;
+}
+
+.pair .card {
+	margin: 0;
+}
+
+.quote {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 15px;
+	margin: 8px 0;
+	padding: 6px 12px;
+	border-left: 3px solid var(--border);
+}
+
+.tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 8px 0 12px;
+}

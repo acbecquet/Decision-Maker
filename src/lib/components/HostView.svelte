@@ -5,6 +5,7 @@
 	import { api, ApiError } from '$lib/client/api';
 	import { toLocalInput } from '$lib/client/datetime';
 	import type { EventPageView } from '$lib/shared/types';
+	import AnalysisSection from './AnalysisSection.svelte';
 	import CloseDialog from './CloseDialog.svelte';
 	import LinkCard from './LinkCard.svelte';
 	import ResponseForm from './ResponseForm.svelte';
@@ -167,10 +168,13 @@
 	<h2>Names</h2>
 	<Roster roster={host.roster} readonly={false} onstatus={setStatus} />
 {:else if host}
-	<h2>Numbers</h2>
-	{#if host.tallies}
-		<TalliesView tallies={host.tallies} options={event.options} currency={event.currency} />
+	{#if !host.hasDraft && event.state !== 'published'}
+		<h2>Numbers</h2>
+		{#if host.tallies}
+			<TalliesView tallies={host.tallies} options={event.options} currency={event.currency} />
+		{/if}
 	{/if}
+	<AnalysisSection {view} {code} {onchange} />
 	<h2>Names</h2>
 	<Roster roster={host.roster} readonly={true} />
 {/if}
