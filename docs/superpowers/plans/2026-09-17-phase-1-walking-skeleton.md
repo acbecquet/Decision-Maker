@@ -2973,7 +2973,33 @@ test.describe('events API', () => {
 			tallies: null
 		});
 		expect(asHost.body.event.options).toHaveLength(4);
-		expect(asHost.body.event.options[0]).toMatchObject({ label: 'Tapas crawl', cost: 25 });
+		expect(asHost.body.event.options[0]).toEqual({
+			id: expect.any(String),
+			label: 'Tapas crawl',
+			note: 'El Born',
+			cost: 25
+		});
+		expect(Object.keys(asHost.body.event).sort()).toEqual([
+			'closedAt',
+			'closesAt',
+			'code',
+			'context',
+			'currency',
+			'options',
+			'rosterFinal',
+			'state',
+			'title'
+		]);
+		expect(Object.keys(asHost.body.host).sort()).toEqual([
+			'pendingCount',
+			'roster',
+			'submittedCount',
+			'tallies'
+		]);
+		const serialized = JSON.stringify(asHost.body);
+		for (const field of ['hostTokenHash', 'accountId', 'aggregates', 'report', 'expiresAt', 'createdAt']) {
+			expect(serialized).not.toContain(`"${field}"`);
+		}
 
 		const asStranger = await viewApi(request, code);
 		expect(asStranger.body.role).toBe('participant');
@@ -2982,6 +3008,8 @@ test.describe('events API', () => {
 
 		const wrongToken = await viewApi(request, code, { 'x-host-token': token() });
 		expect(wrongToken.body.role).toBe('participant');
+		expect(wrongToken.body.host).toBeNull();
+		expect(wrongToken.body.mine).toBeNull();
 	});
 
 	test('rejects a missing host token and bad input', async ({ request }) => {
