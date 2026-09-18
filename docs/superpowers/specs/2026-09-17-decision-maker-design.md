@@ -412,6 +412,7 @@ Three layers of tests:
 
 Lint, format, and type checks gate every commit.
 GitHub Actions runs all three layers on every push using the fake provider.
+The e2e server sets `RATE_LIMIT_SCALE=10` so a full run cannot exhaust the per-IP rate limits; production leaves it unset.
 A manual live spot-check script exists for real keys and is allowed to be flaky.
 The fake-provider suite is not.
 
