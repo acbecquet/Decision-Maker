@@ -1,7 +1,7 @@
 # DecisionMaker design spec
 
 Date: 2026-09-17
-Status: approved in brainstorm, awaiting implementation plan
+Status: approved; Phase 1 deployed on 2026-09-18, later phases in progress
 Repository: https://github.com/acbecquet/Decision-Maker
 
 ## 1. The problem
@@ -113,6 +113,9 @@ The host enters a title, an optional line of context, a currency, 2 to 12 option
 Each option has a label, an optional one-line note, and an optional estimated cost per person.
 Submitting the form creates the event and shows the link screen: the link itself, a copy button, a QR code, and the phone's native share sheet.
 From the link screen the host enters the host view.
+Until the first submission arrives, the host can edit the event from the link screen or the host view.
+Saving an edit replaces the title, context, currency, options, and auto-close time, rotates the event code so the old link stops working, and shows the new link.
+Once anyone has submitted, editing is no longer offered and the server refuses it.
 
 Field limits: title 80 characters, context 200, option label 80, option note 120, cost a non-negative number with at most two decimals, currency an ISO 4217 code.
 
@@ -127,6 +130,7 @@ A "submit my response" button opens the participant form for the host, and the h
 While open, the host sees no per-option numbers of any kind.
 While open, the host may set, change, or remove the auto-close time.
 
+While nobody has submitted, an "Edit event" button leads to the edit form of section 6.1.
 The only other action is "Close submissions".
 
 ### 6.3 Close
@@ -343,6 +347,10 @@ The app therefore offers three provider tabs.
 
 **OpenRouter.** Connect button or pasted key. Calls go through the OpenAI SDK pointed at OpenRouter's base URL, sending the app identification headers. Structured output uses the JSON schema response format where the chosen model supports it, with a validated JSON-in-text fallback and one retry where it does not.
 
+The run request carries a thinking effort of low, medium, high, or max, defaulting to max.
+Anthropic maps it to `output_config.effort`, OpenAI to `reasoning_effort`, and OpenRouter to the unified `reasoning` parameter with the reasoning text excluded from the response.
+The OpenRouter default model is `~deepseek/deepseek-pro-latest` when the live list has it, otherwise `anthropic/claude-opus-5`; the Anthropic default is `claude-opus-5`; the OpenAI default is the first of `gpt-5.6`, `gpt-5.6-sol`, `gpt-6-astra` present in the live list.
+
 The OpenRouter connect flow starts at OpenRouter's authorization page with a PKCE challenge and returns to `/auth/openrouter/callback` with a code.
 The code exchange is done from the browser if OpenRouter permits cross-origin requests, and otherwise through a server route that returns the key in its response without persisting or logging it.
 The implementation plan verifies which applies.
@@ -387,7 +395,7 @@ Each guarantee names where it is enforced.
 2. Numbers appear only after the roster is final, and suppression is one shared function.
 3. Tokens are 256-bit random values from the platform's crypto, stored as SHA-256 hashes, sent in headers, never in URLs, never logged, compared in constant time.
 4. Keys travel in request bodies over HTTPS, live in memory, are redacted from logs and errors, and are never written to the database.
-5. Rate limits: ten submissions per minute per IP per event, five magic-link sends per hour per address and twenty per hour per IP, three analysis runs per ten minutes per event.
+5. Rate limits: sixty submissions per minute per IP per event, twenty event creations or edits per hour per IP, five magic-link sends per hour per address and twenty per hour per IP, three analysis runs per ten minutes per event.
    Request bodies are capped in size.
 6. No third-party scripts, no analytics, and no cookies for participants.
    Only the host's account session uses a cookie, so there is no consent banner.
@@ -434,5 +442,6 @@ Each phase gets its own implementation plan, and the next phase does not start u
 - A Fly.io account and app, an S3-compatible bucket for Litestream (Tigris on Fly or Cloudflare R2), and a Resend or Postmark account for magic links.
   The phase plans include the setup steps.
 - The app is served from a Fly-provided domain until a custom domain is chosen.
+- The operator's own OpenRouter key is used only by the manual live spot-check script and is never configured on the server.
 - Analysis cost is paid by the host through their own provider account.
   A thirty-person event costs cents on a mid-tier model and well under a dollar on a flagship.

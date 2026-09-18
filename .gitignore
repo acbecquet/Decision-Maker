@@ -31,3 +31,6 @@ data/
 e2e/.tmp/
 .superpowers/
 playwright-report/
+
+# Local secrets, never committed
+*-key.txt
