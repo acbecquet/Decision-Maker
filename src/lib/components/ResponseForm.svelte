@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { api, ApiError } from '$lib/client/api';
 	import { ensureToken } from '$lib/client/tokens';
 	import { LIMITS } from '$lib/shared/constants';
@@ -22,12 +23,15 @@
 		onsubmitted: () => void;
 	} = $props();
 
-	let name = $state(mine?.name ?? '');
-	let ranked = $state<string[]>(mine?.ranking ?? []);
-	let vetoed = $state<string[]>(mine?.vetoes ?? []);
-	let budget = $state<Budget>(mine?.budget ?? null);
-	let opinion = $state(mine?.opinion ?? '');
-	let suggestion = $state(mine?.suggestion ?? '');
+	/** The form is re-mounted whenever the submission changes, so a one-time prefill is intended. */
+	const initial = untrack(() => mine);
+
+	let name = $state(initial?.name ?? '');
+	let ranked = $state<string[]>(initial?.ranking ?? []);
+	let vetoed = $state<string[]>(initial?.vetoes ?? []);
+	let budget = $state<Budget>(initial?.budget ?? null);
+	let opinion = $state(initial?.opinion ?? '');
+	let suggestion = $state(initial?.suggestion ?? '');
 	let error = $state('');
 	let busy = $state(false);
 
