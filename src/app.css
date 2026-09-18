@@ -297,12 +297,10 @@ button:disabled {
 }
 
 .bar .name {
-	width: 120px;
-	flex: none;
+	flex: 0 0 38%;
 	color: var(--muted);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	line-height: 1.2;
+	overflow-wrap: anywhere;
 }
 
 .bar .track {
@@ -414,4 +412,20 @@ dialog::backdrop {
 
 a {
 	color: var(--accent);
+}
+
+.row .icon-btn {
+	min-width: 36px;
+	padding: 0 6px;
+}
+
+.row .veto {
+	padding: 0 8px;
+}
+
+@media (max-width: 380px) {
+	.row {
+		gap: 4px;
+		padding: 8px 8px;
+	}
 }

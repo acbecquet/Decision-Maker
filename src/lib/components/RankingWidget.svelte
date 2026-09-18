@@ -40,7 +40,7 @@
 		{#if option}
 			<li class="row">
 				<span class="num">{i + 1}</span>
-				<span class="grow">
+				<span class="grow" style="line-height:1.25">
 					{option.label}
 					{#if option.cost !== null}
 						<span class="muted small">{formatMoney(option.cost, currency)}</span>
