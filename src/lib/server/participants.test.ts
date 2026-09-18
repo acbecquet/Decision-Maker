@@ -13,6 +13,8 @@ import {
 } from './participants';
 import { readApprovedResponses } from './analysis/responses';
 import { makeDb, makeEvent, response } from './test-utils';
+import { eq } from 'drizzle-orm';
+import { events } from './db/schema';
 
 const device = (n: number) => n.toString(16).padStart(64, '0');
 
@@ -151,14 +153,15 @@ describe('roster', () => {
 		expect(() => setParticipantStatus(db, event, 'missing', 'approved')).toThrow(/not found/);
 	});
 
-	it('refuses status changes once the roster is final', () => {
+	it('refuses status changes once the roster is final, even from a stale snapshot', () => {
 		const { db, event, ids } = setup();
 		const a = submitResponse(db, event, ids, device(1), response('A', [ids[0]]), {
 			autoApprove: false
 		});
-		const finalEvent = { ...event, rosterFinal: true };
-		expect(() => setParticipantStatus(db, finalEvent, a.id, 'approved')).toThrow(/final/);
-		expect(() => approveAllPending(db, finalEvent)).toThrow(/final/);
+		db.update(events).set({ rosterFinal: true }).where(eq(events.id, event.id)).run();
+		expect(() => setParticipantStatus(db, event, a.id, 'approved')).toThrow(/final/);
+		expect(() => approveAllPending(db, event)).toThrow(/final/);
+		expect(countByStatus(db, event.id, 'pending')).toBe(1);
 	});
 });
 

@@ -262,6 +262,10 @@ test.describe('roster and close API', () => {
 			data: { status: 'rejected' }
 		});
 		expect(reject.status()).toBe(200);
+		const strangerPatch = await request.patch(`/api/events/${code}/participants/${fay.id}`, {
+			data: { status: 'approved' }
+		});
+		expect(strangerPatch.status()).toBe(403);
 
 		const strangerApprove = await request.post(`/api/events/${code}/roster/approve-all`);
 		expect(strangerApprove.status()).toBe(403);

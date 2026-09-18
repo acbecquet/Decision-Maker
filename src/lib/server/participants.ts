@@ -3,6 +3,7 @@ import type { Db, DbLike } from './db';
 import { participants, responses, type EventRow, type ParticipantRow } from './db/schema';
 import { newId } from './crypto';
 import { badRequest, conflict, notFound } from './errors';
+import { getEventById } from './events';
 import type { Budget, MineView, ParticipantStatus, RosterRow } from '$lib/shared/types';
 import {
 	checkOptionRefs,
@@ -137,13 +138,14 @@ export function listRoster(db: DbLike, eventId: string): RosterRow[] {
 	}));
 }
 
+/** The roster-final guard reads the live row, so a stale caller snapshot cannot bypass it. */
 export function setParticipantStatus(
 	db: DbLike,
 	event: EventRow,
 	participantId: string,
 	status: 'approved' | 'rejected'
 ): void {
-	if (event.rosterFinal) throw conflict('The roster is final');
+	if (getEventById(db, event.id).rosterFinal) throw conflict('The roster is final');
 	const result = db
 		.update(participants)
 		.set({ status })
@@ -153,7 +155,7 @@ export function setParticipantStatus(
 }
 
 export function approveAllPending(db: DbLike, event: EventRow): number {
-	if (event.rosterFinal) throw conflict('The roster is final');
+	if (getEventById(db, event.id).rosterFinal) throw conflict('The roster is final');
 	return resolvePending(db, event.id, 'approved');
 }
 
