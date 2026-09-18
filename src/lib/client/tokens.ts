@@ -73,3 +73,14 @@ export function clearEventTokens(code: string): void {
 		// Nothing stored, nothing to forget.
 	}
 }
+
+/** True when this browser lets the app keep a token, which the host link depends on. */
+export function storageAvailable(): boolean {
+	try {
+		localStorage.setItem('dm:probe', '1');
+		localStorage.removeItem('dm:probe');
+		return true;
+	} catch {
+		return false;
+	}
+}

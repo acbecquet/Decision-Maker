@@ -1,12 +1,18 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api } from '$lib/client/api';
-	import { newToken, setToken } from '$lib/client/tokens';
+	import { api, ApiError } from '$lib/client/api';
+	import { newToken, setToken, storageAvailable } from '$lib/client/tokens';
 	import EventForm from '$lib/components/EventForm.svelte';
 	import type { CreateEventInput } from '$lib/shared/validation';
 
 	async function create(input: CreateEventInput) {
+		if (!storageAvailable()) {
+			throw new ApiError(
+				0,
+				'This browser blocks site storage, so it cannot keep the host link. Allow storage or use another browser.'
+			);
+		}
 		const hostToken = newToken();
 		const { code } = await api<{ code: string }>('/api/events', {
 			method: 'POST',

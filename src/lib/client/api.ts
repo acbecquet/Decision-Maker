@@ -28,11 +28,16 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
 		const participant = getToken(opts.code, 'participant');
 		if (participant) headers['x-participant-token'] = participant;
 	}
-	const res = await fetch(path, {
-		method: opts.method ?? 'GET',
-		headers,
-		body: opts.body === undefined ? undefined : JSON.stringify(opts.body)
-	});
+	let res: Response;
+	try {
+		res = await fetch(path, {
+			method: opts.method ?? 'GET',
+			headers,
+			body: opts.body === undefined ? undefined : JSON.stringify(opts.body)
+		});
+	} catch {
+		throw new ApiError(0, 'Could not reach the server. Check your connection and try again.');
+	}
 	if (!res.ok) {
 		let message = res.statusText || 'Request failed';
 		try {

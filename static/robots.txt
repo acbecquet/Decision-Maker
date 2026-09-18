@@ -1,3 +1,5 @@
-# allow crawling everything by default
+# Event links are private to their group. Crawlers stay out of them.
 User-agent: *
 Disallow: /e/
+Disallow: /signin
+Disallow: /me

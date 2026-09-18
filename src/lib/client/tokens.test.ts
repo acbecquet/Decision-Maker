@@ -6,7 +6,8 @@ import {
 	getToken,
 	moveToken,
 	newToken,
-	setToken
+	setToken,
+	storageAvailable
 } from './tokens';
 
 class MemoryStorage {
@@ -103,5 +104,22 @@ describe('token store', () => {
 		expect(getToken('abc', 'host')).toBeNull();
 		expect(getToken('abc', 'participant')).toBeNull();
 		expect(getToken('xyz', 'host')).toBe('c'.repeat(64));
+	});
+
+	it('storageAvailable reports whether the browser lets us keep tokens', () => {
+		expect(storageAvailable()).toBe(true);
+		Object.defineProperty(globalThis, 'localStorage', {
+			value: {
+				setItem() {
+					throw new Error('blocked');
+				},
+				removeItem() {},
+				getItem() {
+					return null;
+				}
+			},
+			configurable: true
+		});
+		expect(storageAvailable()).toBe(false);
 	});
 });
