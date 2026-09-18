@@ -1,6 +1,7 @@
 import { badRequest } from '../errors';
 import { ProviderError, type ModelProvider } from './contract';
 import { fakeProvider } from './fake';
+import { anthropicProvider } from './providers/anthropic';
 import type { ProviderId, ProviderInfo } from '$lib/shared/report';
 
 export type { JsonRequest, ModelInfo, ModelProvider } from './contract';
@@ -16,7 +17,7 @@ const placeholder = (id: ProviderId): ModelProvider => ({
 });
 
 const registry: Record<ProviderId, ModelProvider> = {
-	anthropic: placeholder('anthropic'),
+	anthropic: anthropicProvider,
 	openai: placeholder('openai'),
 	openrouter: placeholder('openrouter'),
 	fake: fakeProvider
