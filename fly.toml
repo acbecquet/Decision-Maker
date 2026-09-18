@@ -12,6 +12,7 @@ primary_region = 'iad'
 [env]
   ADDRESS_HEADER = 'Fly-Client-IP'
   ALLOW_FAKE_PROVIDER = '0'
+  ALLOW_MAIL_SINK = '0'
   BODY_SIZE_LIMIT = '128K'
   DATABASE_URL = '/data/app.db'
   ORIGIN = 'https://decision-maker-cb.fly.dev'

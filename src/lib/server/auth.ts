@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, count, desc, eq, isNull, lte, sql } from 'drizzle-orm';
 import { isTokenShape, newId, safeEqualHex, sha256Hex } from './crypto';
 import type { DbLike } from './db';
 import { accounts, events, magicLinks, participants, sessions } from './db/schema';
@@ -64,7 +64,7 @@ export function redeemMagicLink(
 			!safeEqualHex(sha256Hex(nonce), link.nonceHash)
 		) {
 			throw badRequest(
-				'This sign-in link has to be opened in the browser that asked for it. Ask for a new link here.'
+				'This sign-in link was not the one this browser asked for. Ask for a new link here.'
 			);
 		}
 		// The single-use guard lives in the write itself, so two redemptions can never both succeed.
@@ -112,6 +112,14 @@ export function endSession(db: DbLike, sessionToken: string | undefined): void {
 	db.delete(sessions)
 		.where(eq(sessions.tokenHash, sha256Hex(sessionToken)))
 		.run();
+}
+
+/** Removes magic links and sessions past their expiry. Runs on the minute tick. */
+export function deleteExpiredAuthRows(db: DbLike, now = new Date()): number {
+	const nowIso = now.toISOString();
+	const links = db.delete(magicLinks).where(lte(magicLinks.expiresAt, nowIso)).run().changes;
+	const sess = db.delete(sessions).where(lte(sessions.expiresAt, nowIso)).run().changes;
+	return links + sess;
 }
 
 /** Attaches every unowned event whose host token is among the given ones. Returns how many moved. */

@@ -65,13 +65,17 @@
 		);
 	const close = (pending: 'approve' | 'reject') => call(`/api/events/${code}/close`, { pending });
 
+	let deleteError = $state('');
+
 	async function remove(): Promise<boolean> {
+		deleteError = '';
 		try {
 			await api(`/api/events/${code}`, { method: 'DELETE', code });
 			clearEventTokens(code);
 			await goto(resolve('/'));
 			return true;
-		} catch {
+		} catch (err) {
+			deleteError = err instanceof ApiError ? err.message : '';
 			return false;
 		}
 	}
@@ -211,5 +215,5 @@
 	>
 		Delete event
 	</button>
-	<DeleteDialog bind:this={deleteDialog} onconfirm={remove} />
+	<DeleteDialog bind:this={deleteDialog} onconfirm={remove} message={deleteError} />
 {/if}

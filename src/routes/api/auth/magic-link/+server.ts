@@ -28,7 +28,14 @@ export const POST: RequestHandler = async ({ request, url, cookies, getClientAdd
 		try {
 			await mailer.sendMagicLink(email, link.href);
 		} catch (e) {
-			console.error('magic link mail failed', e instanceof Error ? e.message : e);
+			const detail = e instanceof Error ? e.message : String(e);
+			console.error('magic link mail failed', detail);
+			if (/own email address/i.test(detail)) {
+				throw new AppError(
+					502,
+					'This server can only send sign-in links to its owner until a sending domain is verified'
+				);
+			}
 			throw new AppError(502, 'Could not send the email, try again');
 		}
 		return json({ ok: true });

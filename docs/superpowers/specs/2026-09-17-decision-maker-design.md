@@ -364,7 +364,7 @@ The key is sent in the request body for the listing call and the run call, is he
 Nine tables in one SQLite file, managed by Drizzle migrations.
 
 - `accounts`: id, email (unique), created_at.
-- `magic_links`: token_hash, email, expires_at, used_at.
+- `magic_links`: token_hash, nonce_hash (the hash of the browser-binding cookie), email, expires_at, used_at.
 - `sessions`: token_hash, account_id, expires_at.
 - `events`: id, code (unique), title, context, currency, state, roster_final, host_token_hash, account_id (nullable), closes_at (nullable), closed_at, published_at, expires_at, provider, model, prompt_version, aggregates JSON, report JSON, created_at.
 - `options`: id, event_id, position, label, note, cost_per_person (nullable).

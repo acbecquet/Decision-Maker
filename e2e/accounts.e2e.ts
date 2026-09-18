@@ -85,6 +85,6 @@ test('a link opened on a different device than the one that requested it is refu
 	const { page, context } = await newDevice(browser);
 	await page.goto(link.pathname + link.search);
 	await page.getByRole('button', { name: 'Finish signing in' }).click();
-	await expect(page.getByRole('alert')).toContainText('browser that asked for it');
+	await expect(page.getByRole('alert')).toContainText('browser asked for');
 	await context.close();
 });

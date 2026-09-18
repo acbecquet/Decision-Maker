@@ -1,5 +1,5 @@
 import type { Handle, ServerInit } from '@sveltejs/kit';
-import { accountIdForSession, SESSION_COOKIE } from '$lib/server/auth';
+import { accountIdForSession, deleteExpiredAuthRows, SESSION_COOKIE } from '$lib/server/auth';
 import { getDb } from '$lib/server/db';
 import { closeDueEvents, deleteExpiredEvents } from '$lib/server/events';
 import { limiter } from '$lib/server/ratelimit';
@@ -11,6 +11,7 @@ export const init: ServerInit = async () => {
 		try {
 			closeDueEvents(db);
 			deleteExpiredEvents(db);
+			deleteExpiredAuthRows(db);
 			limiter.prune();
 		} catch (e) {
 			console.error('auto-close tick failed', e instanceof Error ? e.message : e);

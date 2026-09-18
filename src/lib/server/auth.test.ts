@@ -4,12 +4,13 @@ import {
 	accountIdForSession,
 	claimEvents,
 	createMagicLink,
+	deleteExpiredAuthRows,
 	endSession,
 	listAccountEvents,
 	redeemMagicLink
 } from './auth';
 import { sha256Hex } from './crypto';
-import { accounts, events, magicLinks } from './db/schema';
+import { accounts, events, magicLinks, sessions } from './db/schema';
 import { getEventById, listOptions } from './events';
 import { submitResponse } from './participants';
 import { HOST_HASH, makeDb, makeEvent, response } from './test-utils';
@@ -41,7 +42,7 @@ describe('magic links and sessions', () => {
 		const db = makeDb();
 		const { token, nonce } = createMagicLink(db, 'a@b.co', t0);
 		db.update(magicLinks).set({ nonceHash: null }).run();
-		expect(() => redeemMagicLink(db, token, nonce, t0)).toThrow(/browser that asked for it/);
+		expect(() => redeemMagicLink(db, token, nonce, t0)).toThrow(/browser asked for/);
 		expect(db.select().from(magicLinks).get()?.usedAt).toBeNull();
 	});
 
@@ -58,11 +59,9 @@ describe('magic links and sessions', () => {
 		const { token, nonce } = createMagicLink(db, 'a@b.co', t0);
 		const wrongNonce = 'f'.repeat(64);
 		expect(() => redeemMagicLink(db, token, wrongNonce, later(60_000))).toThrow(
-			/browser that asked for it/
+			/browser asked for/
 		);
-		expect(() => redeemMagicLink(db, token, undefined, later(60_000))).toThrow(
-			/browser that asked for it/
-		);
+		expect(() => redeemMagicLink(db, token, undefined, later(60_000))).toThrow(/browser asked for/);
 		const row = db
 			.select()
 			.from(magicLinks)
@@ -96,6 +95,32 @@ describe('magic links and sessions', () => {
 		endSession(db, second.sessionToken);
 		expect(accountIdForSession(db, second.sessionToken, t0)).toBeNull();
 		expect(accountIdForSession(db, first.sessionToken, t0)).toBe(first.accountId);
+	});
+});
+
+describe('deleteExpiredAuthRows', () => {
+	it('removes only links and sessions past their expiry', () => {
+		const db = makeDb();
+		const fresh = createMagicLink(db, 'a@b.co', t0);
+		const stale = createMagicLink(db, 'c@b.co', new Date(t0.getTime() - 60 * 60_000));
+		const session = redeemMagicLink(db, fresh.token, fresh.nonce, t0);
+		db.insert(sessions)
+			.values({
+				tokenHash: 'x'.repeat(64),
+				accountId: session.accountId,
+				expiresAt: '2020-01-01T00:00:00.000Z'
+			})
+			.run();
+		expect(deleteExpiredAuthRows(db, later(60_000))).toBe(2);
+		expect(
+			db
+				.select()
+				.from(magicLinks)
+				.all()
+				.map((l) => l.email)
+		).toEqual(['a@b.co']);
+		expect(db.select().from(sessions).all()).toHaveLength(1);
+		expect(stale.email).toBe('c@b.co');
 	});
 });
 

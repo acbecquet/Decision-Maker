@@ -713,7 +713,7 @@ test.describe('accounts API', () => {
 			data: { token: otherToken, hostTokens: [] }
 		});
 		expect(strangeExchange.status()).toBe(400);
-		expect((await strangeExchange.json()).message).toMatch(/browser that asked for it/);
+		expect((await strangeExchange.json()).message).toMatch(/browser asked for/);
 		expect((await otherDevice.get('/api/me')).status()).toBe(401);
 		await otherDevice.dispose();
 

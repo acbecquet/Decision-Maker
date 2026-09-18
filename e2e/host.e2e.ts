@@ -133,6 +133,29 @@ test.describe('host', () => {
 		await context.close();
 	});
 
+	test('the delete dialog explains a run in progress', async ({ browser, request }) => {
+		const hostToken = token();
+		const host = { 'x-host-token': hostToken };
+		const code = await createEventApi(request, hostToken);
+		const ids = await optionIds(request, code);
+		for (const name of ['Ana', 'Ben', 'Cleo']) {
+			await submitApi(request, code, token(), { name, ranking: [ids[0]], opinion: 'Thoughts.' });
+		}
+		await request.post(`/api/events/${code}/close`, {
+			headers: host,
+			data: { pending: 'approve' }
+		});
+		await request.post(`/api/events/${code}/analysis`, {
+			headers: host,
+			data: { provider: 'fake', key: 'demo', model: 'fake-slow' }
+		});
+		const { page, context } = await openAsHost(browser, code, hostToken);
+		await page.getByRole('button', { name: 'Delete event' }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+		await expect(page.getByRole('dialog').getByRole('alert')).toContainText('still running');
+		await context.close();
+	});
+
 	test('deleting from the host view lands on the home page and kills the link', async ({
 		browser,
 		request
