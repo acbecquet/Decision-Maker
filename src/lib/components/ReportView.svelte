@@ -36,12 +36,12 @@
 
 	<div class="card highlight">
 		<p class="label" style="margin-top:0">Best option</p>
-		<h2 style="margin:0 0 6px">
-			{name(view.report.best.optionId)}
+		<p style="margin:0 0 6px">
+			<strong>{name(view.report.best.optionId)}</strong>
 			{#if price(view.report.best.optionId)}<span class="muted small"
 					>{price(view.report.best.optionId)}</span
 				>{/if}
-		</h2>
+		</p>
 		<span class="pill">{consensus[view.report.best.consensus]}</span>
 		<p style="margin:10px 0 4px"><strong>{view.report.best.verdict}</strong></p>
 		<p style="margin:0">{view.report.best.rationale}</p>
@@ -50,7 +50,7 @@
 	<div class="pair">
 		<div class="card">
 			<p class="label" style="margin-top:0">Runner-up</p>
-			<h3 style="margin:0">{name(view.report.runnerUp.optionId)}</h3>
+			<p style="margin:0"><strong>{name(view.report.runnerUp.optionId)}</strong></p>
 			{#if price(view.report.runnerUp.optionId)}<p class="small muted" style="margin:0 0 6px">
 					{price(view.report.runnerUp.optionId)}
 				</p>{/if}
@@ -58,7 +58,7 @@
 		</div>
 		<div class="card">
 			<p class="label" style="margin-top:0">Worst</p>
-			<h3 style="margin:0">{name(view.report.worst.optionId)}</h3>
+			<p style="margin:0"><strong>{name(view.report.worst.optionId)}</strong></p>
 			{#if price(view.report.worst.optionId)}<p class="small muted" style="margin:0 0 6px">
 					{price(view.report.worst.optionId)}
 				</p>{/if}
@@ -69,11 +69,12 @@
 	{#if view.report.unexpected}
 		<div class="card">
 			<p class="label" style="margin-top:0">Unexpected</p>
-			<h3 style="margin:0">{view.report.unexpected.title}</h3>
+			<p style="margin:0"><strong>{view.report.unexpected.title}</strong></p>
 			<p class="small" style="margin:6px 0 0">{view.report.unexpected.rationale}</p>
 		</div>
 	{/if}
 
+	<h2>Numbers</h2>
 	<TalliesView tallies={view.tallies} options={view.options} currency={view.currency} />
 
 	<h2>What people said</h2>

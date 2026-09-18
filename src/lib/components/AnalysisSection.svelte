@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { api } from '$lib/client/api';
+	import { api, ApiError } from '$lib/client/api';
 	import type { ReportView as ReportData } from '$lib/shared/report';
 	import type { EventPageView } from '$lib/shared/types';
 	import CopySummary from './CopySummary.svelte';
@@ -19,6 +19,7 @@
 	let report = $state<ReportData | null>(null);
 	let rerun = $state(false);
 	let loadError = $state('');
+	let publishError = $state('');
 	let publishDialog: ReturnType<typeof PublishDialog> | undefined = $state();
 
 	async function loadReport() {
@@ -31,12 +32,14 @@
 	}
 
 	async function publish(): Promise<boolean> {
+		publishError = '';
 		try {
 			await api(`/api/events/${code}/publish`, { method: 'POST', code });
 			await onchange();
 			await loadReport();
 			return true;
-		} catch {
+		} catch (err) {
+			publishError = err instanceof ApiError ? err.message : '';
 			return false;
 		}
 	}
@@ -68,7 +71,7 @@
 		<button type="button" onclick={() => (rerun = true)}>Run again</button>
 		<button type="button" class="btn-primary" onclick={() => publishDialog?.open()}>Publish</button>
 	</div>
-	<PublishDialog bind:this={publishDialog} onconfirm={publish} />
+	<PublishDialog bind:this={publishDialog} onconfirm={publish} message={publishError} />
 {:else}
 	<ModelPanel
 		{code}

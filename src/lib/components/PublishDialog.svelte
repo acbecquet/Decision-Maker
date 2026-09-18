@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { onconfirm }: { onconfirm: () => Promise<boolean> } = $props();
+	let { onconfirm, message }: { onconfirm: () => Promise<boolean>; message?: string } = $props();
 
 	let dialog: HTMLDialogElement | undefined = $state();
 	let busy = $state(false);
@@ -35,6 +35,8 @@
 		>
 	</div>
 	{#if failed}
-		<p class="error" role="alert">Could not publish. Check your connection and try again.</p>
+		<p class="error" role="alert">
+			{message || 'Could not publish. Check your connection and try again.'}
+		</p>
 	{/if}
 </dialog>

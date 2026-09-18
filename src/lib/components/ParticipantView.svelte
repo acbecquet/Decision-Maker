@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { api, ApiError } from '$lib/client/api';
 	import type { ReportView as ReportData } from '$lib/shared/report';
 	import type { EventPageView } from '$lib/shared/types';
@@ -17,16 +16,24 @@
 	let editing = $state(false);
 
 	let report = $state<ReportData | null>(null);
-	let reportState = $state<'loading' | 'shown' | 'hidden' | 'error'>('loading');
+	// svelte-ignore state_referenced_locally -- deliberate: this seeds the initial state from the
+	// event state at mount only; every later transition is driven explicitly by the $effect below.
+	let reportState = $state<'loading' | 'shown' | 'hidden' | 'error'>(
+		view.event.state === 'published' ? 'loading' : 'hidden'
+	);
+	let reportRequested = false;
 
-	onMount(async () => {
-		if (view.event.state !== 'published') return;
-		try {
-			report = await api<ReportData>(`/api/events/${code}/report`, { code });
-			reportState = 'shown';
-		} catch (err) {
-			reportState = err instanceof ApiError && err.status === 404 ? 'hidden' : 'error';
-		}
+	$effect(() => {
+		if (view.event.state !== 'published' || reportRequested) return;
+		reportRequested = true;
+		(async () => {
+			try {
+				report = await api<ReportData>(`/api/events/${code}/report`, { code });
+				reportState = 'shown';
+			} catch (err) {
+				reportState = err instanceof ApiError && err.status === 404 ? 'hidden' : 'error';
+			}
+		})();
 	});
 </script>
 

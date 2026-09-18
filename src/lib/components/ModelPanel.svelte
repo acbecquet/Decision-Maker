@@ -36,6 +36,12 @@
 	let status = $state<AnalysisStatus | null>(null);
 	let error = $state('');
 	let timer: ReturnType<typeof setTimeout> | undefined;
+	/** Becomes true only once this panel has actually observed a run in progress (its own POST, or
+	 *  a mount-time poll that finds one already running), so a stale "succeeded" left over from a
+	 *  previous run never fires `onsucceeded` a second time. */
+	let watching = false;
+	let pollFailures = 0;
+	let modelsGeneration = 0;
 
 	const provider = $derived(providers.find((p) => p.id === providerId) ?? null);
 	const needsKey = $derived(provider !== null && provider.auth !== 'none');
@@ -45,7 +51,9 @@
 			? ''
 			: status.stage === 'synthesize'
 				? 'Writing the report'
-				: `Rewriting ${Math.min(status.done + 1, Math.max(status.total - 1, 1))} of ${Math.max(status.total - 1, 1)}`
+				: status.total === 0
+					? 'Starting'
+					: `Rewriting ${Math.min(status.done + 1, Math.max(status.total - 1, 1))} of ${Math.max(status.total - 1, 1)}`
 	);
 
 	function pick(id: ProviderId) {
@@ -57,17 +65,32 @@
 		if (provider?.auth === 'none' || key !== '') void loadModels();
 	}
 
+	function onTablistKeydown(e: KeyboardEvent) {
+		if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+		e.preventDefault();
+		if (!providerId) return;
+		const ids = providers.map((p) => p.id);
+		const index = ids.indexOf(providerId);
+		if (index === -1) return;
+		const next = ids[(index + (e.key === 'ArrowRight' ? 1 : -1) + ids.length) % ids.length];
+		pick(next);
+		document.getElementById(`tab-${next}`)?.focus();
+	}
+
 	async function loadModels() {
 		if (!providerId) return;
 		error = '';
 		loading = true;
+		const generation = ++modelsGeneration;
+		const trimmedKey = key.trim();
 		try {
-			if (needsKey) setProviderKey(providerId, key);
 			const res = await api<{ models: Model[] }>(`/api/events/${code}/models`, {
 				method: 'POST',
-				body: { provider: providerId, key: needsKey ? key : 'demo' },
+				body: { provider: providerId, key: needsKey ? trimmedKey : 'demo' },
 				code
 			});
+			if (generation !== modelsGeneration) return;
+			if (needsKey) setProviderKey(providerId, trimmedKey);
 			models = res.models;
 			const remembered = getAnalysisPrefs(code);
 			model =
@@ -75,26 +98,35 @@
 					? remembered.model
 					: (models[0]?.id ?? '');
 		} catch (err) {
+			if (generation !== modelsGeneration) return;
 			error = err instanceof ApiError ? err.message : 'Could not reach the server, try again';
 		} finally {
-			loading = false;
+			if (generation === modelsGeneration) loading = false;
 		}
 	}
 
 	async function connect() {
-		window.location.assign(await beginOpenRouterConnect(code, window.location.origin));
+		error = '';
+		try {
+			window.location.assign(await beginOpenRouterConnect(code, window.location.origin));
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Something went wrong, try again';
+		}
 	}
 
 	async function run() {
 		if (!providerId || !model) return;
 		error = '';
+		const trimmedKey = key.trim();
 		setAnalysisPrefs(code, { provider: providerId, model, effort });
 		try {
 			await api(`/api/events/${code}/analysis`, {
 				method: 'POST',
-				body: { provider: providerId, key: needsKey ? key : 'demo', model, effort },
+				body: { provider: providerId, key: needsKey ? trimmedKey : 'demo', model, effort },
 				code
 			});
+			if (needsKey) setProviderKey(providerId, trimmedKey);
+			watching = true;
 			status = {
 				status: 'running',
 				stage: 'anonymize',
@@ -103,7 +135,7 @@
 				error: null,
 				hasDraft: false
 			};
-			poll();
+			void poll();
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Could not reach the server, try again';
 		}
@@ -113,14 +145,28 @@
 		clearTimeout(timer);
 		try {
 			status = await api<AnalysisStatus>(`/api/events/${code}/analysis`, { code });
+			pollFailures = 0;
 		} catch {
+			pollFailures += 1;
+			if (pollFailures >= 3) {
+				error = 'Lost the connection while waiting, reload the page to check the result';
+				return;
+			}
 			timer = setTimeout(poll, 3000);
 			return;
 		}
 		if (status.status === 'running') {
+			watching = true;
 			timer = setTimeout(poll, 1500);
 		} else if (status.status === 'succeeded') {
-			await onsucceeded();
+			if (watching) {
+				watching = false;
+				try {
+					await onsucceeded();
+				} catch (err) {
+					error = err instanceof ApiError ? err.message : 'Something went wrong, try again';
+				}
+			}
 		} else if (status.status === 'failed') {
 			error = status.error ?? 'The analysis failed, try again';
 		}
@@ -144,13 +190,16 @@
 </script>
 
 <h2>Analysis</h2>
-<div class="tabs" role="tablist" aria-label="Provider">
+<div class="tabs" role="tablist" aria-label="Provider" tabindex="-1" onkeydown={onTablistKeydown}>
 	{#each providers as p (p.id)}
 		<button
 			type="button"
 			role="tab"
+			id={`tab-${p.id}`}
 			class="chip"
 			aria-selected={p.id === providerId}
+			aria-controls="provider-panel"
+			tabindex={p.id === providerId ? 0 : -1}
 			onclick={() => pick(p.id)}
 		>
 			{p.label}
@@ -159,52 +208,54 @@
 </div>
 
 {#if provider}
-	{#if needsKey}
-		<label for="provider-key">API key</label>
-		<input
-			id="provider-key"
-			type="password"
-			bind:value={key}
-			autocomplete="off"
-			spellcheck="false"
-		/>
-	{/if}
-	<div class="actions">
-		{#if provider.auth === 'connect'}
-			<button type="button" onclick={connect} disabled={running}>Connect OpenRouter</button>
+	<div role="tabpanel" id="provider-panel" aria-labelledby={`tab-${provider.id}`}>
+		{#if needsKey}
+			<label for="provider-key">API key</label>
+			<input
+				id="provider-key"
+				type="password"
+				bind:value={key}
+				autocomplete="off"
+				spellcheck="false"
+			/>
 		{/if}
-		<button
-			type="button"
-			onclick={loadModels}
-			disabled={loading || running || (needsKey && key.trim() === '')}
-		>
-			{loading ? 'Loading' : models ? 'Reload models' : 'Load models'}
-		</button>
-	</div>
+		<div class="actions">
+			{#if provider.auth === 'connect'}
+				<button type="button" onclick={connect} disabled={running}>Connect OpenRouter</button>
+			{/if}
+			<button
+				type="button"
+				onclick={loadModels}
+				disabled={loading || running || (needsKey && key.trim() === '')}
+			>
+				{loading ? 'Loading' : models ? 'Reload models' : 'Load models'}
+			</button>
+		</div>
 
-	{#if models}
-		<label for="model">Model</label>
-		<select id="model" bind:value={model}>
-			{#each models as m (m.id)}
-				<option value={m.id}>{m.label}</option>
-			{/each}
-		</select>
-		<label for="effort">Thinking</label>
-		<select id="effort" bind:value={effort}>
-			{#each EFFORTS as e (e)}
-				<option value={e}>{EFFORT_LABELS[e]}</option>
-			{/each}
-		</select>
-		<button
-			type="button"
-			class="btn-primary btn-block"
-			style="margin-top:12px"
-			onclick={run}
-			disabled={running || !model}
-		>
-			{running ? 'Running' : 'Run analysis'}
-		</button>
-	{/if}
+		{#if models}
+			<label for="model">Model</label>
+			<select id="model" bind:value={model}>
+				{#each models as m (m.id)}
+					<option value={m.id}>{m.label}</option>
+				{/each}
+			</select>
+			<label for="effort">Thinking</label>
+			<select id="effort" bind:value={effort}>
+				{#each EFFORTS as e (e)}
+					<option value={e}>{EFFORT_LABELS[e]}</option>
+				{/each}
+			</select>
+			<button
+				type="button"
+				class="btn-primary btn-block"
+				style="margin-top:12px"
+				onclick={run}
+				disabled={running || !model}
+			>
+				{running ? 'Running' : 'Run analysis'}
+			</button>
+		{/if}
+	</div>
 {/if}
 
 {#if progress}
