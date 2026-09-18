@@ -22,6 +22,7 @@
 			input?.select();
 			status = 'failed';
 		}
+		setTimeout(() => (status = 'idle'), 3000);
 	}
 
 	async function share() {
