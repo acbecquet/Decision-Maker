@@ -1,6 +1,6 @@
-import { and, asc, eq, lte } from 'drizzle-orm';
+import { and, asc, count, eq, lte } from 'drizzle-orm';
 import type { Db, DbLike } from './db';
-import { events, options, type EventRow, type OptionRow } from './db/schema';
+import { events, options, participants, type EventRow, type OptionRow } from './db/schema';
 import { newEventCode, newId } from './crypto';
 import { conflict, notFound } from './errors';
 import { EVENT_TTL_DAYS } from '$lib/shared/constants';
@@ -52,6 +52,47 @@ export function createEvent(
 			.run();
 	});
 	return getEventById(db, id);
+}
+
+/**
+ * Replaces the event's details and options and rotates its code, so the old link stops working.
+ * Allowed only while the event is open and nobody has submitted.
+ * The guard reads the live row inside the transaction, so a submission that lands during body
+ * parsing is honoured, and the host token hash is untouched so the creating device stays the host.
+ */
+export function updateEvent(db: Db, event: EventRow, input: CreateEventInput): EventRow {
+	return db.transaction((tx) => {
+		const current = getEventById(tx, event.id);
+		if (current.state !== 'open') throw conflict('Submissions are closed');
+		const submitted =
+			tx.select({ n: count() }).from(participants).where(eq(participants.eventId, current.id)).get()
+				?.n ?? 0;
+		if (submitted > 0) throw conflict('Someone has already submitted, so the event cannot change');
+		tx.delete(options).where(eq(options.eventId, current.id)).run();
+		tx.insert(options)
+			.values(
+				input.options.map((o, position) => ({
+					id: newId(),
+					eventId: current.id,
+					position,
+					label: o.label,
+					note: o.note,
+					costPerPerson: o.cost
+				}))
+			)
+			.run();
+		tx.update(events)
+			.set({
+				code: newEventCode(),
+				title: input.title,
+				context: input.context,
+				currency: input.currency,
+				closesAt: input.closesAt ? toIso(input.closesAt) : null
+			})
+			.where(eq(events.id, current.id))
+			.run();
+		return getEventById(tx, current.id);
+	});
 }
 
 export function getEventById(db: DbLike, id: string): EventRow {

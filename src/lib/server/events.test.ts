@@ -9,8 +9,10 @@ import {
 	refreshState,
 	setClosesAt,
 	stopSubmissions,
-	toEventView
+	toEventView,
+	updateEvent
 } from './events';
+import { submitResponse } from './participants';
 
 const input = {
 	title: 'Saturday night',
@@ -103,5 +105,74 @@ describe('toEventView', () => {
 			'title'
 		]);
 		expect(view.options[0]).toEqual({ id: expect.any(String), label: 'Tapas', note: '', cost: 25 });
+	});
+});
+
+describe('updateEvent', () => {
+	const edit = {
+		title: 'Sunday brunch',
+		context: 'Late start',
+		currency: 'USD' as const,
+		options: [
+			{ label: 'Cafe', note: '', cost: 12 },
+			{ label: 'Market', note: 'Outdoor', cost: null }
+		],
+		closesAt: null
+	};
+
+	it('replaces the details and options and rotates the code, keeping the id and host', () => {
+		const db = openDatabase(':memory:');
+		const event = createEvent(db, input, hash);
+		const updated = updateEvent(db, event, edit);
+		expect(updated.id).toBe(event.id);
+		expect(updated.code).not.toBe(event.code);
+		expect(updated.code).toMatch(/^[0-9a-hj-kmnp-tv-z]{10}$/);
+		expect(updated.hostTokenHash).toBe(hash);
+		expect(updated).toMatchObject({
+			title: 'Sunday brunch',
+			context: 'Late start',
+			currency: 'USD',
+			state: 'open',
+			closesAt: null
+		});
+		expect(findEventByCode(db, event.code)).toBeUndefined();
+		expect(findEventByCode(db, updated.code)?.id).toBe(event.id);
+		expect(
+			listOptions(db, event.id).map((o) => [o.position, o.label, o.note, o.costPerPerson])
+		).toEqual([
+			[0, 'Cafe', '', 12],
+			[1, 'Market', 'Outdoor', null]
+		]);
+	});
+
+	it('stores the auto-close time as a UTC instant', () => {
+		const db = openDatabase(':memory:');
+		const event = createEvent(db, input, hash);
+		const updated = updateEvent(db, event, { ...edit, closesAt: '2030-01-01T10:00:00+02:00' });
+		expect(updated.closesAt).toBe('2030-01-01T08:00:00.000Z');
+	});
+
+	it('refuses once anyone has submitted, even from a stale snapshot', () => {
+		const db = openDatabase(':memory:');
+		const event = createEvent(db, input, hash);
+		const ids = listOptions(db, event.id).map((o) => o.id);
+		submitResponse(
+			db,
+			event,
+			ids,
+			'b'.repeat(64),
+			{ name: 'Ana', ranking: [ids[0]], vetoes: [], budget: null, opinion: '', suggestion: '' },
+			{ autoApprove: false }
+		);
+		expect(() => updateEvent(db, event, edit)).toThrow(/already submitted/);
+		expect(findEventByCode(db, event.code)?.title).toBe('Saturday night');
+		expect(listOptions(db, event.id)).toHaveLength(2);
+	});
+
+	it('refuses after submissions have stopped', () => {
+		const db = openDatabase(':memory:');
+		const event = createEvent(db, input, hash);
+		stopSubmissions(db, event);
+		expect(() => updateEvent(db, event, edit)).toThrow(/closed/);
 	});
 });

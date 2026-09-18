@@ -110,6 +110,56 @@ test.describe('events API', () => {
 		const stranger = await request.patch(`/api/events/${code}`, { data: { closesAt: null } });
 		expect(stranger.status()).toBe(403);
 	});
+
+	test('the host can edit the event until the first submission, which rotates the link', async ({
+		request
+	}) => {
+		const hostToken = token();
+		const code = await createEventApi(request, hostToken);
+		const body = {
+			title: 'Sunday brunch',
+			context: '',
+			currency: 'USD',
+			options: [
+				{ label: 'Cafe', note: '', cost: 12 },
+				{ label: 'Market', note: '', cost: null }
+			],
+			closesAt: null
+		};
+
+		const stranger = await request.put(`/api/events/${code}`, { data: body });
+		expect(stranger.status()).toBe(403);
+
+		const edited = await request.put(`/api/events/${code}`, {
+			headers: { 'x-host-token': hostToken },
+			data: body
+		});
+		expect(edited.status()).toBe(200);
+		const { code: next } = (await edited.json()) as { code: string };
+		expect(next).toMatch(/^[0-9a-hj-kmnp-tv-z]{10}$/);
+		expect(next).not.toBe(code);
+		expect((await request.get(`/api/events/${code}`)).status()).toBe(404);
+
+		const view = await viewApi(request, next, { 'x-host-token': hostToken });
+		expect(view.status).toBe(200);
+		expect(view.body.role).toBe('host');
+		expect(view.body.event.title).toBe('Sunday brunch');
+		expect(view.body.event.currency).toBe('USD');
+		expect((view.body.event.options as { label: string }[]).map((o) => o.label)).toEqual([
+			'Cafe',
+			'Market'
+		]);
+
+		const ids = await optionIds(request, next);
+		const submitted = await submitApi(request, next, token(), { name: 'Ana', ranking: [ids[0]] });
+		expect(submitted.status()).toBe(201);
+		const locked = await request.put(`/api/events/${next}`, {
+			headers: { 'x-host-token': hostToken },
+			data: body
+		});
+		expect(locked.status()).toBe(409);
+		expect((await locked.json()).message).toMatch(/already submitted/);
+	});
 });
 
 test.describe('responses API', () => {
