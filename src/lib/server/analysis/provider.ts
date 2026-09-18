@@ -1,32 +1,41 @@
 import { badRequest } from '../errors';
+import { ProviderError, type ModelProvider } from './contract';
 import { fakeProvider } from './fake';
+import type { ProviderId, ProviderInfo } from '$lib/shared/report';
 
-export type ProviderId = 'anthropic' | 'openai' | 'openrouter' | 'fake';
+export type { JsonRequest, ModelInfo, ModelProvider } from './contract';
 
-export type ModelInfo = { id: string; label: string };
+const placeholder = (id: ProviderId): ModelProvider => ({
+	id,
+	async listModels() {
+		throw new ProviderError('Not implemented yet', false);
+	},
+	async completeJson() {
+		throw new ProviderError('Not implemented yet', false);
+	}
+});
 
-export type JsonRequest = {
-	key: string;
-	model: string;
-	system: string;
-	user: string;
-	schemaName: string;
-	schema: Record<string, unknown>;
-	maxTokens: number;
+const registry: Record<ProviderId, ModelProvider> = {
+	anthropic: placeholder('anthropic'),
+	openai: placeholder('openai'),
+	openrouter: placeholder('openrouter'),
+	fake: fakeProvider
 };
 
-/** One model provider. Keys are passed per call and never stored by an implementation. */
-export interface ModelProvider {
-	readonly id: ProviderId;
-	listModels(key: string): Promise<ModelInfo[]>;
-	completeJson(request: JsonRequest): Promise<unknown>;
-}
+const INFO: ProviderInfo[] = [
+	{ id: 'anthropic', label: 'Anthropic', auth: 'key' },
+	{ id: 'openai', label: 'OpenAI', auth: 'key' },
+	{ id: 'openrouter', label: 'OpenRouter', auth: 'connect' },
+	{ id: 'fake', label: 'Fake (demo)', auth: 'none' }
+];
 
 export function isFakeProviderAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
 	return env.ALLOW_FAKE_PROVIDER === '1';
 }
 
-const registry: Partial<Record<ProviderId, ModelProvider>> = { fake: fakeProvider };
+export function listProviders(env: NodeJS.ProcessEnv = process.env): ProviderInfo[] {
+	return INFO.filter((p) => p.id !== 'fake' || isFakeProviderAllowed(env));
+}
 
 export function getProvider(id: string, env: NodeJS.ProcessEnv = process.env): ModelProvider {
 	if (id === 'fake' && !isFakeProviderAllowed(env)) throw badRequest('Unknown provider');
