@@ -3732,6 +3732,7 @@ button {
 	color: inherit;
 	border-radius: var(--radius);
 	padding: 10px 14px;
+	min-height: 40px;
 	cursor: pointer;
 }
 
@@ -3805,8 +3806,8 @@ button:disabled {
 .row {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 10px 12px;
+	gap: 6px;
+	padding: 8px 10px;
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
 	margin-bottom: 6px;
@@ -3821,6 +3822,7 @@ button:disabled {
 .grow {
 	flex: 1;
 	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .num {
@@ -3838,9 +3840,13 @@ button:disabled {
 }
 
 .icon-btn {
-	padding: 4px 9px;
-	font-size: 15px;
-	line-height: 1.2;
+	min-width: 40px;
+	padding: 0 8px;
+	font-size: 16px;
+	line-height: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .chips {
@@ -3850,7 +3856,7 @@ button:disabled {
 }
 
 .chip {
-	padding: 6px 12px;
+	padding: 0 14px;
 	border-radius: 999px;
 	font-size: 14px;
 }
@@ -3864,7 +3870,7 @@ button:disabled {
 .veto {
 	font-size: 12px;
 	font-weight: 500;
-	padding: 3px 9px;
+	padding: 0 10px;
 	border-radius: 999px;
 	white-space: nowrap;
 }
