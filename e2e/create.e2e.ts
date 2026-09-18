@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { newDevice, submitViaUi } from './helpers';
 
 test.describe('creating an event', () => {
 	test('validates, creates, shows the link, and lands on the host view', async ({ page }) => {
@@ -47,5 +48,50 @@ test.describe('creating an event', () => {
 		await expect(otherPage.getByText('0 submitted')).toHaveCount(0);
 		await expect(otherPage.getByRole('button', { name: 'Close submissions' })).toHaveCount(0);
 		await other.close();
+	});
+
+	test('editing from the link screen replaces the options and rotates the link', async ({
+		page,
+		browser
+	}) => {
+		await page.goto('/');
+		await page.getByLabel('What are you deciding?').fill('Lunch');
+		await page.getByLabel('Option 1').fill('A');
+		await page.getByLabel('Option 2').fill('B');
+		await page.getByRole('button', { name: 'Create event' }).click();
+		await expect(page).toHaveURL(/\?created=1$/);
+		const first = new URL(page.url()).pathname.split('/').pop() as string;
+
+		await page.getByRole('button', { name: 'Edit event' }).click();
+		await expect(page).toHaveURL(new RegExp(`/e/${first}/edit`));
+		await expect(page.getByLabel('What are you deciding?')).toHaveValue('Lunch');
+		await expect(page.getByLabel('Option 2')).toHaveValue('B');
+		await page.getByLabel('What are you deciding?').fill('Late lunch');
+		await page.getByLabel('Option 2').fill('Beach');
+		await page.getByRole('button', { name: 'Add option' }).click();
+		await page.getByLabel('Option 3').fill('Cafe');
+		await page.getByRole('button', { name: 'Save' }).click();
+
+		await expect(page).toHaveURL(/\?created=1$/);
+		const second = new URL(page.url()).pathname.split('/').pop() as string;
+		expect(second).not.toBe(first);
+		await expect(page.getByRole('heading', { name: 'Your event is ready' })).toBeVisible();
+		await expect(page.getByLabel('Share this link')).toHaveValue(new RegExp(`/e/${second}$`));
+		await page.getByRole('button', { name: 'Continue to host view' }).click();
+		await expect(page.getByRole('heading', { name: 'Late lunch' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Edit event' })).toBeVisible();
+
+		const old = await newDevice(browser);
+		await old.page.goto(`/e/${first}`);
+		await expect(old.page.getByText('This event does not exist.')).toBeVisible();
+		await old.context.close();
+
+		await submitViaUi(browser, second, { name: 'Ana', rank: ['Cafe'] });
+		await page.reload();
+		await expect(page.getByText('1 submitted')).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Edit event' })).toHaveCount(0);
+
+		await page.goto(`/e/${second}/edit`);
+		await expect(page).toHaveURL(new RegExp(`/e/${second}$`));
 	});
 });

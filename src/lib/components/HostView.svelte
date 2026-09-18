@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { api, ApiError } from '$lib/client/api';
+	import { toLocalInput } from '$lib/client/datetime';
 	import type { EventPageView } from '$lib/shared/types';
 	import CloseDialog from './CloseDialog.svelte';
 	import LinkCard from './LinkCard.svelte';
@@ -23,16 +26,8 @@
 	let error = $state('');
 	let showForm = $state(false);
 	let editingOwn = $state(false);
-	let closesLocal = $state(untrack(() => toLocal(view.event.closesAt)));
+	let closesLocal = $state(untrack(() => toLocalInput(view.event.closesAt)));
 	let closeDialog: ReturnType<typeof CloseDialog> | undefined = $state();
-
-	/** ISO instant to the local wall-clock format a datetime-local input expects. */
-	function toLocal(iso: string | null): string {
-		if (!iso) return '';
-		const d = new Date(iso);
-		const pad = (n: number) => String(n).padStart(2, '0');
-		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-	}
 
 	async function call(
 		path: string,
@@ -87,6 +82,15 @@
 
 {#if host && event.state === 'open'}
 	<LinkCard {code} />
+	{#if host.submittedCount === 0}
+		<button
+			type="button"
+			class="btn-block"
+			onclick={() => goto(resolve('/e/[code]/edit', { code }))}
+		>
+			Edit event
+		</button>
+	{/if}
 
 	{#if view.mine && editingOwn}
 		<h2>Your response</h2>

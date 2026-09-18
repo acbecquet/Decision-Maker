@@ -33,3 +33,15 @@ export function ensureToken(code: string, role: TokenRole): string {
 	setToken(code, role, token);
 	return token;
 }
+
+/** Re-keys a token when an event's code changes, so the device keeps its role under the new link. */
+export function moveToken(from: string, to: string, role: TokenRole): void {
+	const token = getToken(from, role);
+	if (!token) return;
+	setToken(to, role, token);
+	try {
+		localStorage.removeItem(key(from, role));
+	} catch {
+		// Nothing to clean up when storage is unavailable.
+	}
+}

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ensureToken, getToken, newToken, setToken } from './tokens';
+import { ensureToken, getToken, moveToken, newToken, setToken } from './tokens';
 
 class MemoryStorage {
 	private map = new Map<string, string>();
@@ -43,5 +43,14 @@ describe('token store', () => {
 		const first = ensureToken('abc', 'participant');
 		expect(ensureToken('abc', 'participant')).toBe(first);
 		expect(getToken('abc', 'participant')).toBe(first);
+	});
+
+	it('moveToken re-keys a token to the new code and clears the old one', () => {
+		setToken('old', 'host', 'h'.repeat(64));
+		moveToken('old', 'new', 'host');
+		expect(getToken('new', 'host')).toBe('h'.repeat(64));
+		expect(getToken('old', 'host')).toBeNull();
+		moveToken('none', 'other', 'host');
+		expect(getToken('other', 'host')).toBeNull();
 	});
 });

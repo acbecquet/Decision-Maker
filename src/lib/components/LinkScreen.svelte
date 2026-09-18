@@ -6,6 +6,13 @@
 	let { code, title }: { code: string; title: string } = $props();
 </script>
 
+<button
+	type="button"
+	class="link-btn"
+	onclick={() => goto(resolve('/e/[code]/edit?from=link', { code }))}
+>
+	← Edit event
+</button>
 <h1>Your event is ready</h1>
 <p class="muted">{title}</p>
 <LinkCard {code} />
