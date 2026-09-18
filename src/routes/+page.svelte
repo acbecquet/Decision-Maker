@@ -21,4 +21,5 @@
 <main>
 	<h1>DecisionMaker</h1>
 	<EventForm submitLabel="Create event" busyLabel="Creating" onsubmit={create} />
+	<p class="small" style="margin-top:24px"><a href={resolve('/me')}>My events</a></p>
 </main>

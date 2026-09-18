@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ensureToken, getToken, moveToken, newToken, setToken } from './tokens';
+import { allHostTokens, ensureToken, getToken, moveToken, newToken, setToken } from './tokens';
 
 class MemoryStorage {
 	private map = new Map<string, string>();
@@ -14,6 +14,12 @@ class MemoryStorage {
 	}
 	clear() {
 		this.map.clear();
+	}
+	key(index: number) {
+		return [...this.map.keys()][index] ?? null;
+	}
+	get length() {
+		return this.map.size;
 	}
 }
 
@@ -71,5 +77,13 @@ describe('token store', () => {
 		moveToken('old', 'new', 'host');
 		expect(getToken('old', 'host')).toBe('h'.repeat(64));
 		expect(getToken('new', 'host')).toBeNull();
+	});
+
+	it('allHostTokens returns every stored host token and nothing else', () => {
+		setToken('one', 'host', 'a'.repeat(64));
+		setToken('two', 'host', 'b'.repeat(64));
+		setToken('two', 'participant', 'c'.repeat(64));
+		localStorage.setItem('unrelated', 'x');
+		expect(allHostTokens().sort()).toEqual(['a'.repeat(64), 'b'.repeat(64)]);
 	});
 });

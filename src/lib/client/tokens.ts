@@ -47,3 +47,19 @@ export function moveToken(from: string, to: string, role: TokenRole): void {
 		// Nothing to clean up when storage is unavailable.
 	}
 }
+
+/** Every host token this device holds, so a sign-in can attach those events to the account. */
+export function allHostTokens(): string[] {
+	const tokens: string[] = [];
+	try {
+		for (let i = 0; i < localStorage.length; i++) {
+			const k = localStorage.key(i);
+			if (!k || !k.startsWith('dm:') || !k.endsWith(':host')) continue;
+			const value = localStorage.getItem(k);
+			if (value) tokens.push(value);
+		}
+	} catch {
+		// Storage unavailable: nothing to claim.
+	}
+	return tokens;
+}
