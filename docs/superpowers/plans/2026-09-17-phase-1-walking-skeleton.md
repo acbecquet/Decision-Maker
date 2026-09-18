@@ -4665,6 +4665,7 @@ test.describe('participant', () => {
 		await expect(page.getByText('Tapas crawl')).toBeVisible();
 		await expect(page.getByText("Won't work: Paella class")).toBeVisible();
 		await expect(page.getByText('Budget: up to €25')).toBeVisible();
+		await expect(page.getByText('Suggested: Flamenco')).toBeVisible();
 
 		await page.reload();
 		await expect(page.getByRole('heading', { name: 'Thanks, Alex' })).toBeVisible();
@@ -4781,16 +4782,19 @@ Create `src/lib/components/RankingWidget.svelte`:
 	}
 </script>
 
-<div data-testid="ranked">
+<ol data-testid="ranked" style="list-style:none;padding:0;margin:0">
 	{#each ranked as id, i (id)}
 		{@const option = byId(id)}
 		{#if option}
-			<div class="row">
+			<li class="row">
 				<span class="num">{i + 1}</span>
 				<span class="grow">
 					{option.label}
 					{#if option.cost !== null}
 						<span class="muted small">{formatMoney(option.cost, currency)}</span>
+					{/if}
+					{#if option.note}
+						<span class="muted small" style="display:block">{option.note}</span>
 					{/if}
 				</span>
 				<button
@@ -4820,18 +4824,18 @@ Create `src/lib/components/RankingWidget.svelte`:
 					aria-pressed={vetoed.includes(id)}
 					onclick={() => toggleVeto(id)}>Won't work</button
 				>
-			</div>
+			</li>
 		{/if}
 	{/each}
-</div>
+</ol>
 
 {#if unranked.length > 0}
 	<p class="small muted" style="margin:8px 0 6px">
 		{ranked.length === 0 ? 'Tap your first choice' : 'Not ranked yet, tap to add'}
 	</p>
-	<div data-testid="unranked">
+	<ul data-testid="unranked" style="list-style:none;padding:0;margin:0">
 		{#each unranked as option (option.id)}
-			<div class="row dashed">
+			<li class="row dashed">
 				<button
 					type="button"
 					class="grow"
@@ -4842,6 +4846,9 @@ Create `src/lib/components/RankingWidget.svelte`:
 					{#if option.cost !== null}
 						<span class="muted small">{formatMoney(option.cost, currency)}</span>
 					{/if}
+					{#if option.note}
+						<span class="muted small" style="display:block;font-weight:400">{option.note}</span>
+					{/if}
 				</button>
 				<button
 					type="button"
@@ -4850,9 +4857,9 @@ Create `src/lib/components/RankingWidget.svelte`:
 					aria-pressed={vetoed.includes(option.id)}
 					onclick={() => toggleVeto(option.id)}>Won't work</button
 				>
-			</div>
+			</li>
 		{/each}
-	</div>
+	</ul>
 {/if}
 ```
 
@@ -4871,7 +4878,11 @@ Create `src/lib/components/BudgetChips.svelte`:
 		value = $bindable(null)
 	}: { costs: number[]; currency: string; value?: Budget } = $props();
 
-	const same = (a: Budget, b: Budget) => JSON.stringify(a) === JSON.stringify(b);
+	function same(a: Budget, b: Budget): boolean {
+		if (a === null || b === null) return a === b;
+		if (a.kind !== b.kind) return false;
+		return a.kind === 'limit' && b.kind === 'limit' ? a.amount === b.amount : true;
+	}
 
 	function pick(next: Budget) {
 		value = same(value, next) ? null : next;
@@ -4932,8 +4943,8 @@ Create `src/lib/components/ResponseForm.svelte`:
 	const initial = untrack(() => mine);
 
 	let name = $state(initial?.name ?? '');
-	let ranked = $state<string[]>(initial?.ranking ?? []);
-	let vetoed = $state<string[]>(initial?.vetoes ?? []);
+	let ranked = $state<string[]>([...(initial?.ranking ?? [])]);
+	let vetoed = $state<string[]>([...(initial?.vetoes ?? [])]);
 	let budget = $state<Budget>(initial?.budget ?? null);
 	let opinion = $state(initial?.opinion ?? '');
 	let suggestion = $state(initial?.suggestion ?? '');
@@ -5077,8 +5088,11 @@ Create `src/lib/components/ParticipantView.svelte`:
 	import ResponseForm from './ResponseForm.svelte';
 	import SubmittedCard from './SubmittedCard.svelte';
 
-	let { view, code, onchange }: { view: EventPageView; code: string; onchange: () => void } =
-		$props();
+	let {
+		view,
+		code,
+		onchange
+	}: { view: EventPageView; code: string; onchange: () => Promise<void> | void } = $props();
 	const event = $derived(view.event);
 	const mine = $derived(view.mine);
 	let editing = $state(false);
@@ -5095,9 +5109,12 @@ Create `src/lib/components/ParticipantView.svelte`:
 		{code}
 		mine={editing ? mine : null}
 		oncancel={editing ? () => (editing = false) : undefined}
-		onsubmitted={() => {
-			editing = false;
-			onchange();
+		onsubmitted={async () => {
+			try {
+				await onchange();
+			} finally {
+				editing = false;
+			}
 		}}
 	/>
 {:else if event.state === 'open' && mine}
