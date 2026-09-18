@@ -16,11 +16,11 @@ const MAX_NON_STREAMING_TOKENS = 16_000;
 
 type Deps = { fetch?: typeof fetch };
 
-function client(key: string, deps: Deps): Anthropic {
+function client(key: string, deps: Deps, timeout = ANALYSIS.stageTimeoutMs.anonymize): Anthropic {
 	return new Anthropic({
 		apiKey: key,
 		maxRetries: 0,
-		timeout: ANALYSIS.callTimeoutMs,
+		timeout,
 		fetch: deps.fetch
 	});
 }
@@ -79,7 +79,7 @@ export function createAnthropicProvider(deps: Deps = {}): ModelProvider {
 					format: { type: 'json_schema', schema: req.schema }
 				}
 			});
-			const anthropic = client(req.key, deps);
+			const anthropic = client(req.key, deps, ANALYSIS.stageTimeoutMs[req.payload.stage]);
 			let response: Anthropic.Message;
 			try {
 				try {

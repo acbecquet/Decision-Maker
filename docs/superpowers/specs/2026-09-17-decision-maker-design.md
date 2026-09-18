@@ -302,7 +302,7 @@ The key arrives in the "Run analysis" request body over HTTPS, lives in the job 
 A run is all-or-nothing: the draft is saved only on success, and a failed run leaves the previous draft in place.
 Rate-limit and server errors from the provider retry with exponential backoff up to three attempts.
 Any other failure surfaces to the host as a plain message with a retry button.
-Per-call timeout is two minutes and the whole job times out at fifteen minutes.
+Per-call timeout is two minutes for a rewrite and ten minutes for the report call, which thinks for much longer at high effort, and the whole job times out at thirty minutes.
 Re-runs redo every stage, which keeps the pipeline stateless.
 Prompts are versioned files, and the report records the prompt version, provider, and model used.
 

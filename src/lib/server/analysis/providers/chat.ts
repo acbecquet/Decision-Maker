@@ -52,13 +52,13 @@ const mentionsEffort = (e: unknown) =>
 	e instanceof OpenAI.BadRequestError && /reasoning|effort/i.test(e.message);
 
 export function createChatProvider(config: ChatProviderConfig): ModelProvider {
-	const client = (key: string) =>
+	const client = (key: string, timeout = ANALYSIS.stageTimeoutMs.anonymize) =>
 		new OpenAI({
 			apiKey: key,
 			baseURL: config.baseURL,
 			defaultHeaders: config.defaultHeaders,
 			maxRetries: 0,
-			timeout: ANALYSIS.callTimeoutMs,
+			timeout,
 			fetch: config.fetch
 		});
 
@@ -99,7 +99,7 @@ export function createChatProvider(config: ChatProviderConfig): ModelProvider {
 				};
 				return params as unknown as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
 			};
-			const openai = client(req.key);
+			const openai = client(req.key, ANALYSIS.stageTimeoutMs[req.payload.stage]);
 			let completion: OpenAI.Chat.ChatCompletion;
 			try {
 				try {

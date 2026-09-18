@@ -53,10 +53,10 @@ export const PROVIDER_IDS = ['anthropic', 'openai', 'openrouter', 'fake'] as con
 export const ANALYSIS = {
 	/** Parallel stage-1 calls. */
 	concurrency: 4,
-	/** One model call. */
-	callTimeoutMs: 120_000,
+	/** One model call, per stage: the report call thinks for much longer than a rewrite. */
+	stageTimeoutMs: { anonymize: 120_000, synthesize: 600_000 },
 	/** The whole job. */
-	jobTimeoutMs: 900_000,
+	jobTimeoutMs: 1_800_000,
 	/** Attempts for retryable provider errors. */
 	attempts: 3,
 	/** Runs per event per ten minutes. */
