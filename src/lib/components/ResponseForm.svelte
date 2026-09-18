@@ -27,8 +27,8 @@
 	const initial = untrack(() => mine);
 
 	let name = $state(initial?.name ?? '');
-	let ranked = $state<string[]>(initial?.ranking ?? []);
-	let vetoed = $state<string[]>(initial?.vetoes ?? []);
+	let ranked = $state<string[]>([...(initial?.ranking ?? [])]);
+	let vetoed = $state<string[]>([...(initial?.vetoes ?? [])]);
 	let budget = $state<Budget>(initial?.budget ?? null);
 	let opinion = $state(initial?.opinion ?? '');
 	let suggestion = $state(initial?.suggestion ?? '');

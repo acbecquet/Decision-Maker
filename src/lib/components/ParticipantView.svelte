@@ -3,8 +3,11 @@
 	import ResponseForm from './ResponseForm.svelte';
 	import SubmittedCard from './SubmittedCard.svelte';
 
-	let { view, code, onchange }: { view: EventPageView; code: string; onchange: () => void } =
-		$props();
+	let {
+		view,
+		code,
+		onchange
+	}: { view: EventPageView; code: string; onchange: () => Promise<void> | void } = $props();
 	const event = $derived(view.event);
 	const mine = $derived(view.mine);
 	let editing = $state(false);
@@ -21,9 +24,9 @@
 		{code}
 		mine={editing ? mine : null}
 		oncancel={editing ? () => (editing = false) : undefined}
-		onsubmitted={() => {
+		onsubmitted={async () => {
+			await onchange();
 			editing = false;
-			onchange();
 		}}
 	/>
 {:else if event.state === 'open' && mine}

@@ -36,6 +36,7 @@ test.describe('participant', () => {
 		await expect(page.getByText('Tapas crawl')).toBeVisible();
 		await expect(page.getByText("Won't work: Paella class")).toBeVisible();
 		await expect(page.getByText('Budget: up to €25')).toBeVisible();
+		await expect(page.getByText('Suggested: Flamenco')).toBeVisible();
 
 		await page.reload();
 		await expect(page.getByRole('heading', { name: 'Thanks, Alex' })).toBeVisible();

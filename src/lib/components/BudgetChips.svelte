@@ -8,7 +8,11 @@
 		value = $bindable(null)
 	}: { costs: number[]; currency: string; value?: Budget } = $props();
 
-	const same = (a: Budget, b: Budget) => JSON.stringify(a) === JSON.stringify(b);
+	function same(a: Budget, b: Budget): boolean {
+		if (a === null || b === null) return a === b;
+		if (a.kind !== b.kind) return false;
+		return a.kind === 'limit' && b.kind === 'limit' ? a.amount === b.amount : true;
+	}
 
 	function pick(next: Budget) {
 		value = same(value, next) ? null : next;

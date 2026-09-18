@@ -34,16 +34,19 @@
 	}
 </script>
 
-<div data-testid="ranked">
+<ol data-testid="ranked" style="list-style:none;padding:0;margin:0">
 	{#each ranked as id, i (id)}
 		{@const option = byId(id)}
 		{#if option}
-			<div class="row">
+			<li class="row">
 				<span class="num">{i + 1}</span>
 				<span class="grow">
 					{option.label}
 					{#if option.cost !== null}
 						<span class="muted small">{formatMoney(option.cost, currency)}</span>
+					{/if}
+					{#if option.note}
+						<span class="muted small" style="display:block">{option.note}</span>
 					{/if}
 				</span>
 				<button
@@ -73,18 +76,18 @@
 					aria-pressed={vetoed.includes(id)}
 					onclick={() => toggleVeto(id)}>Won't work</button
 				>
-			</div>
+			</li>
 		{/if}
 	{/each}
-</div>
+</ol>
 
 {#if unranked.length > 0}
 	<p class="small muted" style="margin:8px 0 6px">
 		{ranked.length === 0 ? 'Tap your first choice' : 'Not ranked yet, tap to add'}
 	</p>
-	<div data-testid="unranked">
+	<ul data-testid="unranked" style="list-style:none;padding:0;margin:0">
 		{#each unranked as option (option.id)}
-			<div class="row dashed">
+			<li class="row dashed">
 				<button
 					type="button"
 					class="grow"
@@ -95,6 +98,9 @@
 					{#if option.cost !== null}
 						<span class="muted small">{formatMoney(option.cost, currency)}</span>
 					{/if}
+					{#if option.note}
+						<span class="muted small" style="display:block;font-weight:400">{option.note}</span>
+					{/if}
 				</button>
 				<button
 					type="button"
@@ -103,7 +109,7 @@
 					aria-pressed={vetoed.includes(option.id)}
 					onclick={() => toggleVeto(option.id)}>Won't work</button
 				>
-			</div>
+			</li>
 		{/each}
-	</div>
+	</ul>
 {/if}
