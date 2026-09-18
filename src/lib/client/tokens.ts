@@ -1,3 +1,5 @@
+import { MAX_HOST_TOKENS_PER_SIGNIN } from '$lib/shared/constants';
+
 export type TokenRole = 'host' | 'participant';
 
 const key = (code: string, role: TokenRole) => `dm:${code}:${role}`;
@@ -48,7 +50,10 @@ export function moveToken(from: string, to: string, role: TokenRole): void {
 	}
 }
 
-/** Every host token this device holds, so a sign-in can attach those events to the account. */
+/**
+ * Every host token this device holds, so a sign-in can attach those events to the account,
+ * capped at the number the session route accepts.
+ */
 export function allHostTokens(): string[] {
 	const tokens: string[] = [];
 	try {
@@ -61,7 +66,7 @@ export function allHostTokens(): string[] {
 	} catch {
 		// Storage unavailable: nothing to claim.
 	}
-	return tokens;
+	return tokens.slice(0, MAX_HOST_TOKENS_PER_SIGNIN);
 }
 
 /** Forgets both roles for an event, after the host deletes it. */
@@ -76,11 +81,16 @@ export function clearEventTokens(code: string): void {
 
 /** True when this browser lets the app keep a token, which the host link depends on. */
 export function storageAvailable(): boolean {
+	const probe = 'dm:probe';
 	try {
-		localStorage.setItem('dm:probe', '1');
-		localStorage.removeItem('dm:probe');
-		return true;
+		localStorage.setItem(probe, '1');
 	} catch {
 		return false;
 	}
+	try {
+		localStorage.removeItem(probe);
+	} catch {
+		// The write worked, which is what matters; a stray probe key is harmless.
+	}
+	return true;
 }

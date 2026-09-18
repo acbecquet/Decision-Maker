@@ -45,6 +45,8 @@ export const RULES = {
 export const EVENT_CODE_ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
 export const EVENT_CODE_LENGTH = 10;
 export const TOKEN_HEX_LENGTH = 64;
+/** Host tokens a browser may attach to an account in one sign-in. */
+export const MAX_HOST_TOKENS_PER_SIGNIN = 200;
 export const EVENT_TTL_DAYS = 90;
 
 export const EFFORTS = ['low', 'medium', 'high', 'max'] as const;

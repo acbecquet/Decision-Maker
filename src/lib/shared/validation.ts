@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CURRENCIES, EFFORTS, LIMITS, PROVIDER_IDS } from './constants';
+import { CURRENCIES, EFFORTS, LIMITS, MAX_HOST_TOKENS_PER_SIGNIN, PROVIDER_IDS } from './constants';
 
 const trimmed = (max: number) => z.string().trim().max(max, `At most ${max} characters`);
 
@@ -77,7 +77,7 @@ export const runAnalysisInput = z
 	})
 	.refine(looksLikeKey, keyLengthIssue);
 
-const hostTokens = z.array(z.string()).max(200).default([]);
+const hostTokens = z.array(z.string()).max(MAX_HOST_TOKENS_PER_SIGNIN).default([]);
 
 export const magicLinkInput = z.object({
 	email: z.string().trim().toLowerCase().email('Enter an email address').max(254)

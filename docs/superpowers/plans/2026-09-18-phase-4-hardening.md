@@ -299,3 +299,11 @@ Expected: green.
 git add src/app.css src/lib/components/RankingWidget.svelte e2e/participant.e2e.ts
 git commit -m "Wrap chart labels and tighten ranking rows at phone width"
 ```
+
+## Deviations after review
+
+The task reviews changed the code in these ways, and the code is the source of truth over the steps above.
+
+- `storageAvailable()` treats a failed cleanup of its probe key as harmless: only a failed write means storage is unavailable, so the check cannot misreport after a successful write.
+- `allHostTokens()` stops at the sign-in limit of 200 tokens, which is now the shared constant `MAX_HOST_TOKENS_PER_SIGNIN` that the session route validates against, so a device holding more still signs in.
+- The header scenario also asserts the nonce on `script-src`, the absence of `'unsafe-inline'` there, and the `img-src`, `base-uri`, and `form-action` directives.

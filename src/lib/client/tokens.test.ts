@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { MAX_HOST_TOKENS_PER_SIGNIN } from '$lib/shared/constants';
 import {
 	allHostTokens,
 	clearEventTokens,
@@ -96,6 +97,13 @@ describe('token store', () => {
 		expect(allHostTokens().sort()).toEqual(['a'.repeat(64), 'b'.repeat(64)]);
 	});
 
+	it('allHostTokens stops at the number a sign-in accepts', () => {
+		for (let i = 0; i < MAX_HOST_TOKENS_PER_SIGNIN + 5; i++) {
+			setToken(`code${i}`, 'host', 'a'.repeat(64));
+		}
+		expect(allHostTokens()).toHaveLength(MAX_HOST_TOKENS_PER_SIGNIN);
+	});
+
 	it('clearEventTokens removes both roles for one event only', () => {
 		setToken('abc', 'host', 'a'.repeat(64));
 		setToken('abc', 'participant', 'b'.repeat(64));
@@ -108,6 +116,7 @@ describe('token store', () => {
 
 	it('storageAvailable reports whether the browser lets us keep tokens', () => {
 		expect(storageAvailable()).toBe(true);
+		expect(localStorage.getItem('dm:probe')).toBeNull();
 		Object.defineProperty(globalThis, 'localStorage', {
 			value: {
 				setItem() {
@@ -121,5 +130,21 @@ describe('token store', () => {
 			configurable: true
 		});
 		expect(storageAvailable()).toBe(false);
+	});
+
+	it('storageAvailable trusts a write that worked even when its cleanup fails', () => {
+		Object.defineProperty(globalThis, 'localStorage', {
+			value: {
+				setItem() {},
+				removeItem() {
+					throw new Error('blocked');
+				},
+				getItem() {
+					return null;
+				}
+			},
+			configurable: true
+		});
+		expect(storageAvailable()).toBe(true);
 	});
 });
