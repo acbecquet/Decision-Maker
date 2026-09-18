@@ -27,6 +27,7 @@ test.describe('host', () => {
 		await expect(roster.getByRole('listitem')).toHaveCount(3);
 		await expect(roster).toContainText('Ana');
 		await expect(page.getByText('First choices')).toHaveCount(0);
+		await expect(page.getByTestId(/^first-/)).toHaveCount(0);
 		await expect(page.getByText('SENTINEL')).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Reject Cleo' }).click();
@@ -124,6 +125,8 @@ test.describe('host', () => {
 		await page.getByRole('button', { name: 'Reject pending and close' }).click();
 		await expect(page.getByText('0 approved responses')).toBeVisible();
 		await expect(page.getByText('The roster is final.')).toBeVisible();
+		await expect(page.getByRole('button', { name: /^(Approve|Reject) / })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: /reopen/i })).toHaveCount(0);
 		await context.close();
 	});
 });

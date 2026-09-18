@@ -16,6 +16,9 @@
 
 	const event = $derived(view.event);
 	const host = $derived(view.host);
+	const pendingNames = $derived(
+		host?.roster.filter((r) => r.status === 'pending').map((r) => r.name) ?? []
+	);
 	let error = $state('');
 	let showForm = $state(false);
 	let closesLocal = $state(untrack(() => toLocal(view.event.closesAt)));
@@ -29,13 +32,19 @@
 		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 	}
 
-	async function call(path: string, body?: unknown, method: 'POST' | 'PATCH' = 'POST') {
+	async function call(
+		path: string,
+		body?: unknown,
+		method: 'POST' | 'PATCH' = 'POST'
+	): Promise<boolean> {
 		error = '';
 		try {
 			await api(path, { method, body, code });
 			await onchange();
+			return true;
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Something went wrong, try again';
+			return false;
 		}
 	}
 
@@ -146,6 +155,6 @@
 	<p class="small muted">The roster is final.</p>
 {/if}
 
-{#if host}
-	<CloseDialog bind:this={closeDialog} pendingCount={host.pendingCount} onconfirm={close} />
+{#if host && !event.rosterFinal}
+	<CloseDialog bind:this={closeDialog} {pendingNames} onconfirm={close} />
 {/if}

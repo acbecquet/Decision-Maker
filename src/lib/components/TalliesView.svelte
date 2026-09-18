@@ -14,7 +14,11 @@
 	const maxFirst = $derived(
 		breakdown ? Math.max(1, ...breakdown.firstChoice.map((f) => f.count)) : 1
 	);
-	const shades = ['#185fa5', '#378add', '#85b7eb', '#b5d4f4'];
+	/** Darker for higher ranks; the last segment (last place or unranked) is the lightest. */
+	function shade(index: number, count: number): string {
+		const t = count <= 1 ? 1 : index / (count - 1);
+		return `hsl(214 70% ${Math.round(32 + t * 48)}%)`;
+	}
 
 	/** Splits a rank row into proportional segments, folding unranked into the last position. */
 	function segments(ranks: number[], unranked: number): { width: number; color: string }[] {
@@ -23,7 +27,7 @@
 		const last = ranks.length - 1;
 		return ranks
 			.map((n, i) => (i === last ? n + unranked : n))
-			.map((n, i) => ({ width: (n / total) * 100, color: shades[Math.min(i, shades.length - 1)] }))
+			.map((n, i) => ({ width: (n / total) * 100, color: shade(i, ranks.length) }))
 			.filter((s) => s.width > 0);
 	}
 </script>

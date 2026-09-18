@@ -17,8 +17,8 @@
 {#if roster.length === 0}
 	<p class="muted">Nobody has submitted yet. Share the link.</p>
 {:else}
-	<ul style="list-style:none;padding:0;margin:0" data-testid="roster">
-		{#each roster as row (row.id)}
+	<ul style="list-style:none;padding:0;margin:0" data-testid="roster" role="list">
+		{#each roster as row, i (row.id)}
 			<li class="row">
 				<span class="grow">
 					{row.name}
@@ -36,7 +36,7 @@
 						<button
 							type="button"
 							class="icon-btn"
-							aria-label={`Approve ${row.name}`}
+							aria-label={`Approve ${row.name}${row.duplicate ? ` (${i + 1})` : ''}`}
 							onclick={() => onstatus(row.id, 'approved')}>✓</button
 						>
 					{/if}
@@ -44,7 +44,7 @@
 						<button
 							type="button"
 							class="icon-btn"
-							aria-label={`Reject ${row.name}`}
+							aria-label={`Reject ${row.name}${row.duplicate ? ` (${i + 1})` : ''}`}
 							onclick={() => onstatus(row.id, 'rejected')}>✕</button
 						>
 					{/if}
