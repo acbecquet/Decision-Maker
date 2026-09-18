@@ -51,6 +51,7 @@
 		"@anthropic-ai/sdk": "^0.126.0",
 		"better-sqlite3": "^13.0.2",
 		"openai": "^7.18.0",
+		"resend": "^6.28.1",
 		"zod": "^4.6.5"
 	}
 }
