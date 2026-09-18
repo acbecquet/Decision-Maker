@@ -1,9 +1,13 @@
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { EVENT_CODE_ALPHABET } from '$lib/shared/constants';
 import { openDatabase } from './db';
+import { accounts, options, participants, responses } from './db/schema';
 import {
 	closeDueEvents,
 	createEvent,
+	deleteEvent,
+	deleteExpiredEvents,
 	findEventByCode,
 	listOptions,
 	refreshState,
@@ -186,5 +190,45 @@ describe('updateEvent', () => {
 		const event = createEvent(db, input, hash);
 		stopSubmissions(db, event);
 		expect(() => updateEvent(db, event, edit)).toThrow(/closed/);
+	});
+});
+
+describe('deleteEvent and deleteExpiredEvents', () => {
+	it('removes the event with its options, participants, and responses', () => {
+		const db = openDatabase(':memory:');
+		const event = createEvent(db, input, hash);
+		const ids = listOptions(db, event.id).map((o) => o.id);
+		submitResponse(
+			db,
+			event,
+			ids,
+			'b'.repeat(64),
+			{ name: 'Ana', ranking: [ids[0]], vetoes: [], budget: null, opinion: 'x', suggestion: '' },
+			{ autoApprove: false }
+		);
+		deleteEvent(db, event);
+		expect(findEventByCode(db, event.code)).toBeUndefined();
+		expect(db.select().from(options).where(eq(options.eventId, event.id)).all()).toEqual([]);
+		expect(db.select().from(participants).where(eq(participants.eventId, event.id)).all()).toEqual(
+			[]
+		);
+		expect(db.select().from(responses).all()).toEqual([]);
+	});
+
+	it('sweeps expired events that no account owns and leaves the rest', () => {
+		const db = openDatabase(':memory:');
+		const now = new Date('2026-09-18T12:00:00.000Z');
+		const stale = createEvent(db, input, hash, null, new Date('2026-06-01T00:00:00.000Z'));
+		// events.accountId has a foreign key to accounts.id, so the row must exist first.
+		db.insert(accounts)
+			.values({ id: 'acc-1', email: 'acc-1@example.test', createdAt: now.toISOString() })
+			.run();
+		const owned = createEvent(db, input, hash, 'acc-1', new Date('2026-06-01T00:00:00.000Z'));
+		const fresh = createEvent(db, input, hash, null, new Date('2026-09-01T00:00:00.000Z'));
+		expect(deleteExpiredEvents(db, now)).toBe(1);
+		expect(findEventByCode(db, stale.code)).toBeUndefined();
+		expect(findEventByCode(db, owned.code)).toBeDefined();
+		expect(findEventByCode(db, fresh.code)).toBeDefined();
+		expect(deleteExpiredEvents(db, now)).toBe(0);
 	});
 });

@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { badRequest } from '$lib/server/errors';
-import { setClosesAt, updateEvent } from '$lib/server/events';
+import { deleteEvent, setClosesAt, updateEvent } from '$lib/server/events';
 import { raise, readJson } from '$lib/server/http';
 import { enforce } from '$lib/server/ratelimit';
 import { requireHost } from '$lib/server/roles';
@@ -48,6 +48,18 @@ export const PUT: RequestHandler = async ({ params, request, getClientAddress, l
 		}
 		const updated = updateEvent(db, event, input);
 		return json({ code: updated.code });
+	} catch (e) {
+		raise(e);
+	}
+};
+
+export const DELETE: RequestHandler = ({ params, request, locals }) => {
+	try {
+		const db = getDb();
+		const event = loadEventOr404(db, params.code);
+		requireHost(event, request, locals.accountId);
+		deleteEvent(db, event);
+		return new Response(null, { status: 204 });
 	} catch (e) {
 		raise(e);
 	}

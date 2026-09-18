@@ -43,5 +43,6 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
 		}
 		throw new ApiError(res.status, message);
 	}
+	if (res.status === 204) return undefined as T;
 	return (await res.json()) as T;
 }

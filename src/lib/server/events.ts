@@ -1,4 +1,4 @@
-import { and, asc, count, eq, lte } from 'drizzle-orm';
+import { and, asc, count, eq, isNull, lte } from 'drizzle-orm';
 import type { Db, DbLike } from './db';
 import { events, options, participants, type EventRow, type OptionRow } from './db/schema';
 import { newEventCode, newId } from './crypto';
@@ -168,4 +168,17 @@ export function toEventView(event: EventRow, opts: OptionRow[]): EventView {
 		closedAt: event.closedAt,
 		options: opts.map((o) => ({ id: o.id, label: o.label, note: o.note, cost: o.costPerPerson }))
 	};
+}
+
+/** Removes the event and, through cascades, its options, participants, responses, points, and jobs. */
+export function deleteEvent(db: DbLike, event: EventRow): void {
+	db.delete(events).where(eq(events.id, event.id)).run();
+}
+
+/** Deletes events past their expiry that no account owns. Returns how many were removed. */
+export function deleteExpiredEvents(db: DbLike, now = new Date()): number {
+	return db
+		.delete(events)
+		.where(and(lte(events.expiresAt, now.toISOString()), isNull(events.accountId)))
+		.run().changes;
 }

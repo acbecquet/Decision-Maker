@@ -4,9 +4,11 @@
 	import { resolve } from '$app/paths';
 	import { api, ApiError } from '$lib/client/api';
 	import { toLocalInput } from '$lib/client/datetime';
+	import { clearEventTokens } from '$lib/client/tokens';
 	import type { EventPageView } from '$lib/shared/types';
 	import AnalysisSection from './AnalysisSection.svelte';
 	import CloseDialog from './CloseDialog.svelte';
+	import DeleteDialog from './DeleteDialog.svelte';
 	import LinkCard from './LinkCard.svelte';
 	import ResponseForm from './ResponseForm.svelte';
 	import Roster from './Roster.svelte';
@@ -29,6 +31,7 @@
 	let editingOwn = $state(false);
 	let closesLocal = $state(untrack(() => toLocalInput(view.event.closesAt)));
 	let closeDialog: ReturnType<typeof CloseDialog> | undefined = $state();
+	let deleteDialog: ReturnType<typeof DeleteDialog> | undefined = $state();
 
 	async function call(
 		path: string,
@@ -61,6 +64,17 @@
 			'PATCH'
 		);
 	const close = (pending: 'approve' | 'reject') => call(`/api/events/${code}/close`, { pending });
+
+	async function remove(): Promise<boolean> {
+		try {
+			await api(`/api/events/${code}`, { method: 'DELETE', code });
+			clearEventTokens(code);
+			await goto(resolve('/'));
+			return true;
+		} catch {
+			return false;
+		}
+	}
 </script>
 
 <h1>{event.title}</h1>
@@ -186,4 +200,16 @@
 		closed={event.state === 'closed'}
 		onconfirm={close}
 	/>
+{/if}
+
+{#if host}
+	<button
+		type="button"
+		class="btn-block btn-danger"
+		style="margin-top:32px"
+		onclick={() => deleteDialog?.open()}
+	>
+		Delete event
+	</button>
+	<DeleteDialog bind:this={deleteDialog} onconfirm={remove} />
 {/if}

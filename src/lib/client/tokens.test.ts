@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { allHostTokens, ensureToken, getToken, moveToken, newToken, setToken } from './tokens';
+import {
+	allHostTokens,
+	clearEventTokens,
+	ensureToken,
+	getToken,
+	moveToken,
+	newToken,
+	setToken
+} from './tokens';
 
 class MemoryStorage {
 	private map = new Map<string, string>();
@@ -85,5 +93,15 @@ describe('token store', () => {
 		setToken('two', 'participant', 'c'.repeat(64));
 		localStorage.setItem('unrelated', 'x');
 		expect(allHostTokens().sort()).toEqual(['a'.repeat(64), 'b'.repeat(64)]);
+	});
+
+	it('clearEventTokens removes both roles for one event only', () => {
+		setToken('abc', 'host', 'a'.repeat(64));
+		setToken('abc', 'participant', 'b'.repeat(64));
+		setToken('xyz', 'host', 'c'.repeat(64));
+		clearEventTokens('abc');
+		expect(getToken('abc', 'host')).toBeNull();
+		expect(getToken('abc', 'participant')).toBeNull();
+		expect(getToken('xyz', 'host')).toBe('c'.repeat(64));
 	});
 });

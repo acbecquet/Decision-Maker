@@ -132,4 +132,20 @@ test.describe('host', () => {
 		await expect(page.getByRole('button', { name: /reopen/i })).toHaveCount(0);
 		await context.close();
 	});
+
+	test('deleting from the host view lands on the home page and kills the link', async ({
+		browser,
+		request
+	}) => {
+		const hostToken = token();
+		const code = await createEventApi(request, hostToken);
+		const { page, context } = await openAsHost(browser, code, hostToken);
+		await page.getByRole('button', { name: 'Delete event' }).click();
+		await expect(page.getByRole('dialog')).toContainText('including the report');
+		await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+		await expect(page).toHaveURL(/\/$/);
+		await page.goto(`/e/${code}`);
+		await expect(page.getByText('This event does not exist.')).toBeVisible();
+		await context.close();
+	});
 });

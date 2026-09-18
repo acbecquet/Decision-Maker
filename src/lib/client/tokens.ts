@@ -63,3 +63,13 @@ export function allHostTokens(): string[] {
 	}
 	return tokens;
 }
+
+/** Forgets both roles for an event, after the host deletes it. */
+export function clearEventTokens(code: string): void {
+	try {
+		localStorage.removeItem(key(code, 'host'));
+		localStorage.removeItem(key(code, 'participant'));
+	} catch {
+		// Nothing stored, nothing to forget.
+	}
+}

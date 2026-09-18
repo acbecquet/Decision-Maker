@@ -162,6 +162,18 @@ test.describe('events API', () => {
 		expect(locked.status()).toBe(409);
 		expect((await locked.json()).message).toMatch(/already submitted/);
 	});
+
+	test('the host can delete the event, after which the link is gone', async ({ request }) => {
+		const hostToken = token();
+		const code = await createEventApi(request, hostToken);
+		expect((await request.delete(`/api/events/${code}`)).status()).toBe(403);
+		expect(
+			(
+				await request.delete(`/api/events/${code}`, { headers: { 'x-host-token': hostToken } })
+			).status()
+		).toBe(204);
+		expect((await request.get(`/api/events/${code}`)).status()).toBe(404);
+	});
 });
 
 test.describe('responses API', () => {
