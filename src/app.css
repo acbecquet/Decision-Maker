@@ -391,3 +391,9 @@ dialog::backdrop {
 	gap: 8px;
 	margin: 8px 0 12px;
 }
+
+.chip[aria-selected='true'] {
+	background: var(--accent);
+	color: var(--accent-text);
+	border-color: var(--accent);
+}
