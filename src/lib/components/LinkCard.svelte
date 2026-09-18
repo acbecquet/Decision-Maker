@@ -37,7 +37,7 @@
 			await navigator.share({ title, url });
 		} catch (err) {
 			// A cancelled sheet is not a failure; anything else deserves a visible fallback.
-			if (err instanceof DOMException && err.name === 'AbortError') return;
+			if (err instanceof Error && err.name === 'AbortError') return;
 			shareFailed = true;
 		}
 	}

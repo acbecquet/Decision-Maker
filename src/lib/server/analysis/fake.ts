@@ -1,5 +1,6 @@
 import { ProviderError, type ModelProvider } from './contract';
 import type { AnonymizeInput, SynthesizeInput } from './prompts';
+import { ANALYSIS } from '$lib/shared/constants';
 import { sleep } from './retry';
 import type { AnonymizeOutput, SynthesizeOutput } from './schemas';
 
@@ -105,7 +106,9 @@ export function fakeSynthesize(input: SynthesizeInput): SynthesizeOutput {
 
 /**
  * Deterministic stand-in used by tests and demos. Model ids: fake-fast, fake-slow (300 ms per call),
- * and the unlisted fake-broken, which fails every call so the failure path can be exercised.
+ * and two unlisted ones: fake-broken fails every call so the failure path can be exercised, and
+ * fake-stuck waits until the run is aborted or times out, so a run stays "running" for as long as
+ * a scenario needs it to.
  */
 export const fakeProvider: ModelProvider = {
 	id: 'fake',
@@ -119,6 +122,10 @@ export const fakeProvider: ModelProvider = {
 		if (request.model === 'fake-broken')
 			throw new ProviderError('The fake provider was told to fail', false);
 		if (request.model === 'fake-slow') await sleep(300, request.signal);
+		if (request.model === 'fake-stuck') {
+			await sleep(ANALYSIS.jobTimeoutMs, request.signal);
+			throw new ProviderError('The fake provider was told to hang until aborted', false);
+		}
 		return request.payload.stage === 'anonymize'
 			? fakeAnonymize(request.payload.input)
 			: fakeSynthesize(request.payload.input);

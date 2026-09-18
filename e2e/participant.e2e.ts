@@ -26,9 +26,6 @@ test.describe('participant', () => {
 		await expect(page.getByTestId('ranked')).toContainText(/2\s*Tapas crawl/);
 		await page.getByRole('button', { name: 'Move Tapas crawl up' }).click();
 		await expect(page.getByTestId('ranked')).toContainText(/1\s*Tapas crawl/);
-		const label = page.getByTestId('ranked').getByText('Tapas crawl', { exact: false }).first();
-		await expect(label).toBeVisible();
-		expect((await label.boundingBox())?.width ?? 0).toBeGreaterThan(60);
 		await page.getByRole('button', { name: "Won't work for Paella class" }).click();
 		await page.getByRole('button', { name: 'Up to €25' }).click();
 		await page.getByLabel('Your opinion').fill('Tapas is central so everyone can get there');

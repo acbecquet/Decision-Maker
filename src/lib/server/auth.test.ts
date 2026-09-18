@@ -99,10 +99,11 @@ describe('magic links and sessions', () => {
 });
 
 describe('deleteExpiredAuthRows', () => {
-	it('removes only links and sessions past their expiry', () => {
+	it('removes links and sessions an hour past their expiry and keeps the rest', () => {
 		const db = makeDb();
 		const fresh = createMagicLink(db, 'a@b.co', t0);
-		const stale = createMagicLink(db, 'c@b.co', new Date(t0.getTime() - 60 * 60_000));
+		const recent = createMagicLink(db, 'c@b.co', new Date(t0.getTime() - 60 * 60_000));
+		createMagicLink(db, 'd@b.co', new Date(t0.getTime() - 3 * 60 * 60_000));
 		const session = redeemMagicLink(db, fresh.token, fresh.nonce, t0);
 		db.insert(sessions)
 			.values({
@@ -118,9 +119,10 @@ describe('deleteExpiredAuthRows', () => {
 				.from(magicLinks)
 				.all()
 				.map((l) => l.email)
-		).toEqual(['a@b.co']);
+				.sort()
+		).toEqual(['a@b.co', 'c@b.co']);
 		expect(db.select().from(sessions).all()).toHaveLength(1);
-		expect(stale.email).toBe('c@b.co');
+		expect(() => redeemMagicLink(db, recent.token, recent.nonce, later(60_000))).toThrow(/expired/);
 	});
 });
 

@@ -17,6 +17,7 @@ export default defineConfig({
 					'default-src': ['self'],
 					'script-src': ['self'],
 					'style-src': ['self', 'unsafe-inline'],
+					// data: because Vite inlines the small favicon as a data URI.
 					'img-src': ['self', 'data:'],
 					'connect-src': ['self', 'https://openrouter.ai'],
 					'frame-ancestors': ['none'],

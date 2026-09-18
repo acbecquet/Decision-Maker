@@ -67,12 +67,13 @@ export function submitApi(
 
 /** A fresh browser context is a fresh device: its own storage, so its own tokens. */
 export async function newDevice(
-	browser: Browser
+	browser: Browser,
+	viewport?: { width: number; height: number }
 ): Promise<{ context: BrowserContext; page: Page }> {
 	const use = test.info().project.use;
 	const context = await browser.newContext({
 		baseURL: use.baseURL,
-		viewport: use.viewport ?? undefined,
+		viewport: viewport ?? use.viewport ?? undefined,
 		deviceScaleFactor: use.deviceScaleFactor,
 		isMobile: use.isMobile,
 		hasTouch: use.hasTouch

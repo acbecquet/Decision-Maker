@@ -23,6 +23,14 @@ describe('api', () => {
 		expect(err.status).toBe(502);
 	});
 
+	it('turns a success without JSON into a plain error rather than a syntax error', async () => {
+		vi.stubGlobal('fetch', respond(200, '<html>proxy page</html>', 'text/html'));
+		await expect(api('/x')).rejects.toMatchObject({
+			status: 200,
+			message: 'The server sent an unexpected response. Try again.'
+		});
+	});
+
 	it('turns a transport failure into a status 0 error with a plain message', async () => {
 		vi.stubGlobal(
 			'fetch',

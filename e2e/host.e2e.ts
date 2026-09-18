@@ -145,10 +145,11 @@ test.describe('host', () => {
 			headers: host,
 			data: { pending: 'approve' }
 		});
-		await request.post(`/api/events/${code}/analysis`, {
+		const started = await request.post(`/api/events/${code}/analysis`, {
 			headers: host,
-			data: { provider: 'fake', key: 'demo', model: 'fake-slow' }
+			data: { provider: 'fake', key: 'demo', model: 'fake-stuck' }
 		});
+		expect(started.status()).toBe(202);
 		const { page, context } = await openAsHost(browser, code, hostToken);
 		await page.getByRole('button', { name: 'Delete event' }).click();
 		await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();

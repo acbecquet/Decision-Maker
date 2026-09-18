@@ -114,11 +114,14 @@ export function endSession(db: DbLike, sessionToken: string | undefined): void {
 		.run();
 }
 
-/** Removes magic links and sessions past their expiry. Runs on the minute tick. */
+/** How long an expired row stays, so a late click still gets the precise "expired" or "used" message. */
+export const AUTH_SWEEP_GRACE_MS = 60 * 60_000;
+
+/** Removes magic links and sessions an hour past their expiry. Runs on the minute tick. */
 export function deleteExpiredAuthRows(db: DbLike, now = new Date()): number {
-	const nowIso = now.toISOString();
-	const links = db.delete(magicLinks).where(lte(magicLinks.expiresAt, nowIso)).run().changes;
-	const sess = db.delete(sessions).where(lte(sessions.expiresAt, nowIso)).run().changes;
+	const cutoff = new Date(now.getTime() - AUTH_SWEEP_GRACE_MS).toISOString();
+	const links = db.delete(magicLinks).where(lte(magicLinks.expiresAt, cutoff)).run().changes;
+	const sess = db.delete(sessions).where(lte(sessions.expiresAt, cutoff)).run().changes;
 	return links + sess;
 }
 

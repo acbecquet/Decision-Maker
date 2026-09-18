@@ -307,3 +307,9 @@ The task reviews changed the code in these ways, and the code is the source of t
 - `storageAvailable()` treats a failed cleanup of its probe key as harmless: only a failed write means storage is unavailable, so the check cannot misreport after a successful write.
 - `allHostTokens()` stops at the sign-in limit of 200 tokens, which is now the shared constant `MAX_HOST_TOKENS_PER_SIGNIN` that the session route validates against, so a device holding more still signs in.
 - The header scenario also asserts the nonce on `script-src`, the absence of `'unsafe-inline'` there, and the `img-src`, `base-uri`, and `form-action` directives.
+- The manifest icon and the tab icon are a DecisionMaker mark (a check on the accent colour) instead of the scaffold's framework logo, and the manifest icon is marked maskable.
+- The fake provider gained the unlisted `fake-stuck` model, which waits until the run is aborted or times out, so the delete-dialog scenario cannot race a run that finishes in under a second.
+- The phone-width wrap check is its own scenario at 360 px that counts rendered lines and checks for clipping, in the ranked row and in the first-choices chart, instead of a width assertion that could not tell wrapping from truncation.
+- The share fallback treats any `AbortError` as a cancelled sheet, not only a `DOMException`.
+- Expired magic links and sessions are swept an hour after expiry, so a late click still gets the precise "expired" or "already used" message.
+- A successful response without a JSON body becomes an `ApiError` with a plain message instead of a raw syntax error.

@@ -30,6 +30,8 @@ export const POST: RequestHandler = async ({ request, url, cookies, getClientAdd
 		} catch (e) {
 			const detail = e instanceof Error ? e.message : String(e);
 			console.error('magic link mail failed', detail);
+			// Resend's sandbox sender answers "You can only send testing emails to your own email
+			// address"; if that wording ever changes, the generic message below takes over.
 			if (/own email address/i.test(detail)) {
 				throw new AppError(
 					502,
