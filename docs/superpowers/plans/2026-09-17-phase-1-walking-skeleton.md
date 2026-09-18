@@ -5269,6 +5269,7 @@ test.describe('host', () => {
 		await expect(roster.getByRole('listitem')).toHaveCount(3);
 		await expect(roster).toContainText('Ana');
 		await expect(page.getByText('First choices')).toHaveCount(0);
+		await expect(page.getByTestId(/^first-/)).toHaveCount(0);
 		await expect(page.getByText('SENTINEL')).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Reject Cleo' }).click();
@@ -5366,6 +5367,8 @@ test.describe('host', () => {
 		await page.getByRole('button', { name: 'Reject pending and close' }).click();
 		await expect(page.getByText('0 approved responses')).toBeVisible();
 		await expect(page.getByText('The roster is final.')).toBeVisible();
+		await expect(page.getByRole('button', { name: /^(Approve|Reject) / })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: /reopen/i })).toHaveCount(0);
 		await context.close();
 	});
 });
@@ -5403,8 +5406,8 @@ Create `src/lib/components/Roster.svelte`:
 {#if roster.length === 0}
 	<p class="muted">Nobody has submitted yet. Share the link.</p>
 {:else}
-	<ul style="list-style:none;padding:0;margin:0" data-testid="roster">
-		{#each roster as row (row.id)}
+	<ul role="list" style="list-style:none;padding:0;margin:0" data-testid="roster">
+		{#each roster as row, i (row.id)}
 			<li class="row">
 				<span class="grow">
 					{row.name}
@@ -5422,7 +5425,7 @@ Create `src/lib/components/Roster.svelte`:
 						<button
 							type="button"
 							class="icon-btn"
-							aria-label={`Approve ${row.name}`}
+							aria-label={`Approve ${row.name}${row.duplicate ? ` (${i + 1})` : ''}`}
 							onclick={() => onstatus(row.id, 'approved')}>✓</button
 						>
 					{/if}
@@ -5430,7 +5433,7 @@ Create `src/lib/components/Roster.svelte`:
 						<button
 							type="button"
 							class="icon-btn"
-							aria-label={`Reject ${row.name}`}
+							aria-label={`Reject ${row.name}${row.duplicate ? ` (${i + 1})` : ''}`}
 							onclick={() => onstatus(row.id, 'rejected')}>✕</button
 						>
 					{/if}
@@ -5448,47 +5451,78 @@ Create `src/lib/components/CloseDialog.svelte`:
 ```svelte
 <script lang="ts">
 	let {
-		pendingCount,
+		pendingNames,
 		onconfirm
-	}: { pendingCount: number; onconfirm: (pending: 'approve' | 'reject') => void } = $props();
+	}: { pendingNames: string[]; onconfirm: (pending: 'approve' | 'reject') => Promise<boolean> } =
+		$props();
 
 	let dialog: HTMLDialogElement | undefined = $state();
+	let busy = $state(false);
+	let failed = $state(false);
+	const pendingCount = $derived(pendingNames.length);
 
 	export function open() {
+		failed = false;
 		dialog?.showModal();
 	}
 
-	function choose(pending: 'approve' | 'reject') {
-		dialog?.close();
-		onconfirm(pending);
+	async function choose(pending: 'approve' | 'reject') {
+		busy = true;
+		failed = false;
+		try {
+			const ok = await onconfirm(pending);
+			if (ok) dialog?.close();
+			else failed = true;
+		} finally {
+			busy = false;
+		}
 	}
 </script>
 
-<dialog bind:this={dialog}>
-	<h2 style="margin-top:0">Close submissions?</h2>
+<dialog bind:this={dialog} aria-labelledby="close-dialog-title">
+	<h2 id="close-dialog-title" style="margin-top:0">Close submissions?</h2>
 	{#if pendingCount > 0}
 		<p>
 			{pendingCount}
-			{pendingCount === 1 ? 'name is' : 'names are'} still pending. Closing is final, so decide what happens
-			to them.
+			{pendingCount === 1 ? 'name is' : 'names are'} still pending: {pendingNames.join(', ')}.
+			Closing is final, so decide what happens to them.
 		</p>
 		<div class="stack">
-			<button type="button" class="btn-primary btn-block" onclick={() => choose('approve')}>
+			<button
+				type="button"
+				class="btn-primary btn-block"
+				disabled={busy}
+				onclick={() => choose('approve')}
+			>
 				Approve pending and close
 			</button>
-			<button type="button" class="btn-block" onclick={() => choose('reject')}>
+			<button type="button" class="btn-block" disabled={busy} onclick={() => choose('reject')}>
 				Reject pending and close
 			</button>
-			<button type="button" class="btn-block" onclick={() => dialog?.close()}>Go back</button>
+			<button type="button" class="btn-block" disabled={busy} onclick={() => dialog?.close()}>
+				Go back
+			</button>
 		</div>
 	{:else}
 		<p>Nobody can submit or edit after this, and there is no reopen.</p>
 		<div class="stack">
-			<button type="button" class="btn-primary btn-block" onclick={() => choose('approve')}>
+			<button
+				type="button"
+				class="btn-primary btn-block"
+				disabled={busy}
+				onclick={() => choose('approve')}
+			>
 				Close now
 			</button>
-			<button type="button" class="btn-block" onclick={() => dialog?.close()}>Go back</button>
+			<button type="button" class="btn-block" disabled={busy} onclick={() => dialog?.close()}>
+				Go back
+			</button>
 		</div>
+	{/if}
+	{#if failed}
+		<p class="error" role="alert">
+			Could not close submissions. Check your connection and try again.
+		</p>
 	{/if}
 </dialog>
 ```
@@ -5514,7 +5548,11 @@ Create `src/lib/components/TalliesView.svelte`:
 	const maxFirst = $derived(
 		breakdown ? Math.max(1, ...breakdown.firstChoice.map((f) => f.count)) : 1
 	);
-	const shades = ['#185fa5', '#378add', '#85b7eb', '#b5d4f4'];
+	/** Darker for higher ranks; the last segment (last place or unranked) is the lightest. */
+	function shade(index: number, count: number): string {
+		const t = count <= 1 ? 1 : index / (count - 1);
+		return `hsl(214 70% ${Math.round(32 + t * 48)}%)`;
+	}
 
 	/** Splits a rank row into proportional segments, folding unranked into the last position. */
 	function segments(ranks: number[], unranked: number): { width: number; color: string }[] {
@@ -5523,7 +5561,7 @@ Create `src/lib/components/TalliesView.svelte`:
 		const last = ranks.length - 1;
 		return ranks
 			.map((n, i) => (i === last ? n + unranked : n))
-			.map((n, i) => ({ width: (n / total) * 100, color: shades[Math.min(i, shades.length - 1)] }))
+			.map((n, i) => ({ width: (n / total) * 100, color: shade(i, ranks.length) }))
 			.filter((s) => s.width > 0);
 	}
 </script>
@@ -5638,13 +5676,23 @@ Replace `src/lib/components/HostView.svelte` with:
 		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 	}
 
-	async function call(path: string, body?: unknown, method: 'POST' | 'PATCH' = 'POST') {
+	const pendingNames = $derived(
+		host?.roster.filter((r) => r.status === 'pending').map((r) => r.name) ?? []
+	);
+
+	async function call(
+		path: string,
+		body?: unknown,
+		method: 'POST' | 'PATCH' = 'POST'
+	): Promise<boolean> {
 		error = '';
 		try {
 			await api(path, { method, body, code });
 			await onchange();
+			return true;
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Something went wrong, try again';
+			return false;
 		}
 	}
 
@@ -5755,8 +5803,8 @@ Replace `src/lib/components/HostView.svelte` with:
 	<p class="small muted">The roster is final.</p>
 {/if}
 
-{#if host}
-	<CloseDialog bind:this={closeDialog} pendingCount={host.pendingCount} onconfirm={close} />
+{#if host && !event.rosterFinal}
+	<CloseDialog bind:this={closeDialog} {pendingNames} onconfirm={close} />
 {/if}
 ```
 
