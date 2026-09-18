@@ -2,7 +2,14 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { EVENT_CODE_ALPHABET } from '$lib/shared/constants';
 import { openDatabase } from './db';
-import { accounts, options, participants, responses } from './db/schema';
+import {
+	accounts,
+	analysisJobs,
+	anonymizedPoints,
+	options,
+	participants,
+	responses
+} from './db/schema';
 import {
 	closeDueEvents,
 	createEvent,
@@ -194,11 +201,11 @@ describe('updateEvent', () => {
 });
 
 describe('deleteEvent and deleteExpiredEvents', () => {
-	it('removes the event with its options, participants, and responses', () => {
+	it('removes the event with its options, participants, responses, points, and jobs', () => {
 		const db = openDatabase(':memory:');
 		const event = createEvent(db, input, hash);
 		const ids = listOptions(db, event.id).map((o) => o.id);
-		submitResponse(
+		const ana = submitResponse(
 			db,
 			event,
 			ids,
@@ -206,8 +213,36 @@ describe('deleteEvent and deleteExpiredEvents', () => {
 			{ name: 'Ana', ranking: [ids[0]], vetoes: [], budget: null, opinion: 'x', suggestion: '' },
 			{ autoApprove: false }
 		);
+		db.insert(anonymizedPoints)
+			.values({
+				id: 'p1',
+				eventId: event.id,
+				participantId: ana.id,
+				text: 'One person likes it.',
+				type: 'reason',
+				optionIds: [ids[0]],
+				model: 'fake-fast'
+			})
+			.run();
+		db.insert(analysisJobs)
+			.values({
+				id: 'j1',
+				eventId: event.id,
+				status: 'succeeded',
+				stage: null,
+				done: 1,
+				total: 1,
+				startedAt: '2026-09-18T00:00:00.000Z'
+			})
+			.run();
 		deleteEvent(db, event);
 		expect(findEventByCode(db, event.code)).toBeUndefined();
+		expect(
+			db.select().from(anonymizedPoints).where(eq(anonymizedPoints.eventId, event.id)).all()
+		).toEqual([]);
+		expect(db.select().from(analysisJobs).where(eq(analysisJobs.eventId, event.id)).all()).toEqual(
+			[]
+		);
 		expect(db.select().from(options).where(eq(options.eventId, event.id)).all()).toEqual([]);
 		expect(db.select().from(participants).where(eq(participants.eventId, event.id)).all()).toEqual(
 			[]

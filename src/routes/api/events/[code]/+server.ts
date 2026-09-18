@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { isRunning } from '$lib/server/analysis/job';
 import { getDb } from '$lib/server/db';
-import { badRequest } from '$lib/server/errors';
+import { badRequest, conflict } from '$lib/server/errors';
 import { deleteEvent, setClosesAt, updateEvent } from '$lib/server/events';
 import { raise, readJson } from '$lib/server/http';
 import { enforce } from '$lib/server/ratelimit';
@@ -58,6 +59,8 @@ export const DELETE: RequestHandler = ({ params, request, locals }) => {
 		const db = getDb();
 		const event = loadEventOr404(db, params.code);
 		requireHost(event, request, locals.accountId);
+		// A running job still holds the raw responses in memory; deleting under it would break the promise.
+		if (isRunning(event.id)) throw conflict('An analysis is still running, wait for it to finish');
 		deleteEvent(db, event);
 		return new Response(null, { status: 204 });
 	} catch (e) {
