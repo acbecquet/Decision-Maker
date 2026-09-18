@@ -231,3 +231,153 @@ test.describe('responses API', () => {
 		expect((await empty.json()).message).toMatch(/at least one/);
 	});
 });
+
+test.describe('roster and close API', () => {
+	test('approval, close with pending resolution, tallies after close, and no reopen', async ({
+		request
+	}) => {
+		const hostToken = token();
+		const host = { 'x-host-token': hostToken };
+		const code = await createEventApi(request, hostToken);
+		const ids = await optionIds(request, code);
+		const people = ['Ana', 'Ben', 'Cleo', 'Dev', 'Eli', 'Fay'];
+		const tokens = people.map(() => token());
+		for (let i = 0; i < people.length; i++) {
+			const res = await submitApi(request, code, tokens[i], {
+				name: people[i],
+				ranking: [ids[i % 2], ids[2]],
+				budget: { kind: 'limit', amount: i < 3 ? 20 : 50 }
+			});
+			expect(res.status()).toBe(201);
+		}
+
+		let view = (await viewApi(request, code, host)).body;
+		expect(view.host.submittedCount).toBe(6);
+		expect(view.host.pendingCount).toBe(6);
+		expect(view.host.tallies).toBeNull();
+
+		const fay = view.host.roster.find((r: { name: string }) => r.name === 'Fay');
+		const reject = await request.patch(`/api/events/${code}/participants/${fay.id}`, {
+			headers: host,
+			data: { status: 'rejected' }
+		});
+		expect(reject.status()).toBe(200);
+
+		const strangerApprove = await request.post(`/api/events/${code}/roster/approve-all`);
+		expect(strangerApprove.status()).toBe(403);
+
+		const approveAll = await request.post(`/api/events/${code}/roster/approve-all`, {
+			headers: host
+		});
+		expect(approveAll.status()).toBe(200);
+		view = await approveAll.json();
+		expect(view.host.pendingCount).toBe(0);
+		expect(
+			view.host.roster.filter((r: { status: string }) => r.status === 'approved')
+		).toHaveLength(5);
+		expect(view.host.tallies).toBeNull();
+
+		const strangerClose = await request.post(`/api/events/${code}/close`, {
+			data: { pending: 'approve' }
+		});
+		expect(strangerClose.status()).toBe(403);
+
+		const close = await request.post(`/api/events/${code}/close`, {
+			headers: host,
+			data: { pending: 'approve' }
+		});
+		expect(close.status()).toBe(200);
+		view = await close.json();
+		expect(view.event.state).toBe('closed');
+		expect(view.event.rosterFinal).toBe(true);
+		expect(view.host.tallies.approvedCount).toBe(5);
+		expect(view.host.tallies.breakdown.firstChoice).toEqual([
+			{ optionId: ids[0], count: 3 },
+			{ optionId: ids[1], count: 2 },
+			{ optionId: ids[2], count: 0 },
+			{ optionId: ids[3], count: 0 }
+		]);
+		expect(view.host.tallies.breakdown.cost).toEqual({
+			answered: 5,
+			rows: [
+				{ optionId: ids[0], cost: 25, overBudget: 3 },
+				{ optionId: ids[1], cost: 15, overBudget: null },
+				{ optionId: ids[2], cost: 45, overBudget: 3 }
+			]
+		});
+
+		const again = await request.post(`/api/events/${code}/close`, {
+			headers: host,
+			data: { pending: 'approve' }
+		});
+		expect(again.status()).toBe(409);
+
+		const late = await submitApi(request, code, token(), { name: 'Late', ranking: [ids[0]] });
+		expect(late.status()).toBe(409);
+
+		const flip = await request.patch(`/api/events/${code}/participants/${fay.id}`, {
+			headers: host,
+			data: { status: 'approved' }
+		});
+		expect(flip.status()).toBe(409);
+
+		const edit = await request.put(`/api/events/${code}/responses`, {
+			headers: { 'x-participant-token': tokens[0] },
+			data: { ranking: [ids[1]], vetoes: [], budget: null, opinion: '', suggestion: '' }
+		});
+		expect(edit.status()).toBe(409);
+	});
+
+	test('below five approved responses the breakdown is hidden', async ({ request }) => {
+		const hostToken = token();
+		const host = { 'x-host-token': hostToken };
+		const code = await createEventApi(request, hostToken);
+		const ids = await optionIds(request, code);
+		for (const name of ['Ana', 'Ben', 'Cleo', 'Dev']) {
+			await submitApi(request, code, token(), { name, ranking: [ids[0]] });
+		}
+		const close = await request.post(`/api/events/${code}/close`, {
+			headers: host,
+			data: { pending: 'approve' }
+		});
+		const view = await close.json();
+		expect(view.host.tallies).toEqual({ approvedCount: 4, breakdown: null });
+	});
+
+	test('a passed auto-close time stops submissions and leaves pending names for the host', async ({
+		request
+	}) => {
+		const hostToken = token();
+		const host = { 'x-host-token': hostToken };
+		const code = await createEventApi(request, hostToken);
+		const ids = await optionIds(request, code);
+		await submitApi(request, code, token(), { name: 'Ana', ranking: [ids[0]] });
+
+		const soon = new Date(Date.now() + 1500).toISOString();
+		const set = await request.patch(`/api/events/${code}`, {
+			headers: host,
+			data: { closesAt: soon }
+		});
+		expect(set.status()).toBe(200);
+		await new Promise((resolve) => setTimeout(resolve, 1700));
+
+		const view = (await viewApi(request, code, host)).body;
+		expect(view.event.state).toBe('closed');
+		expect(view.event.rosterFinal).toBe(false);
+		expect(view.host.tallies).toBeNull();
+		expect(view.host.pendingCount).toBe(1);
+
+		const late = await submitApi(request, code, token(), { name: 'Late', ranking: [ids[0]] });
+		expect(late.status()).toBe(409);
+
+		const close = await request.post(`/api/events/${code}/close`, {
+			headers: host,
+			data: { pending: 'reject' }
+		});
+		expect(close.status()).toBe(200);
+		const closed = await close.json();
+		expect(closed.event.rosterFinal).toBe(true);
+		expect(closed.host.pendingCount).toBe(0);
+		expect(closed.host.tallies).toEqual({ approvedCount: 0, breakdown: null });
+	});
+});
