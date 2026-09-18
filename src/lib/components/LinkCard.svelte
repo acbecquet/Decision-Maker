@@ -7,11 +7,17 @@
 	const url = $derived(`${location.origin}/e/${code}`);
 	let input: HTMLInputElement | undefined = $state();
 	let status = $state<'idle' | 'copied' | 'failed'>('idle');
+	let shareFailed = $state(false);
 	let svg = $state('');
 	const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
 	onMount(async () => {
-		svg = await qrSvg(url);
+		try {
+			svg = await qrSvg(url);
+		} catch (err) {
+			// The QR code is a convenience; without it the link and the copy button still work.
+			console.error('QR code failed', err instanceof Error ? err.message : err);
+		}
 	});
 
 	async function copy() {
@@ -26,10 +32,13 @@
 	}
 
 	async function share() {
+		shareFailed = false;
 		try {
 			await navigator.share({ title, url });
-		} catch {
-			// Cancelled or unavailable; the link and QR code remain.
+		} catch (err) {
+			// A cancelled sheet is not a failure; anything else deserves a visible fallback.
+			if (err instanceof DOMException && err.name === 'AbortError') return;
+			shareFailed = true;
 		}
 	}
 </script>
@@ -49,6 +58,9 @@
 			<button type="button" onclick={share}>Share</button>
 		{/if}
 	</div>
+	{#if shareFailed}
+		<p class="small error" role="alert">Sharing did not work here. Copy the link instead.</p>
+	{/if}
 	{#if status === 'failed'}
 		<p class="small error" role="alert">
 			Copying is not available here, so the link is selected for you to copy by hand.
