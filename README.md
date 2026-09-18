@@ -31,3 +31,16 @@ The end-to-end suite builds the app, starts it on port 4173 with a fresh SQLite 
 
 Schema changes go in `src/lib/server/db/schema.ts`, then `npm run db:generate` writes a migration into `drizzle/`.
 Migrations run automatically when the server starts.
+
+## Deploy
+
+The app runs on Fly.io as one always-on machine with a volume at `/data` and Litestream replicating the database to a Tigris bucket.
+
+```sh
+fly deploy
+fly logs
+fly ssh console -C "litestream snapshots -config /etc/litestream.yml /data/app.db"
+```
+
+Secrets for the bucket are set by `fly storage create` and never committed.
+The app name, region, and public origin live in `fly.toml`.
