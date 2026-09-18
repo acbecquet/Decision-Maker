@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { api, ApiError } from '$lib/client/api';
 	import type { EventPageView } from '$lib/shared/types';
 	import CloseDialog from './CloseDialog.svelte';
@@ -17,7 +18,7 @@
 	const host = $derived(view.host);
 	let error = $state('');
 	let showForm = $state(false);
-	let closesLocal = $state(toLocal(view.event.closesAt));
+	let closesLocal = $state(untrack(() => toLocal(view.event.closesAt)));
 	let closeDialog: ReturnType<typeof CloseDialog> | undefined = $state();
 
 	/** ISO instant to the local wall-clock format a datetime-local input expects. */
