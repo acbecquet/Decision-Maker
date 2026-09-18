@@ -1,25 +1,17 @@
 import { badRequest } from '../errors';
-import { ProviderError, type ModelProvider } from './contract';
+import type { ModelProvider } from './contract';
 import { fakeProvider } from './fake';
 import { anthropicProvider } from './providers/anthropic';
+import { openaiProvider } from './providers/openai';
+import { openrouterProvider } from './providers/openrouter';
 import type { ProviderId, ProviderInfo } from '$lib/shared/report';
 
 export type { JsonRequest, ModelInfo, ModelProvider } from './contract';
 
-const placeholder = (id: ProviderId): ModelProvider => ({
-	id,
-	async listModels() {
-		throw new ProviderError('Not implemented yet', false);
-	},
-	async completeJson() {
-		throw new ProviderError('Not implemented yet', false);
-	}
-});
-
 const registry: Record<ProviderId, ModelProvider> = {
 	anthropic: anthropicProvider,
-	openai: placeholder('openai'),
-	openrouter: placeholder('openrouter'),
+	openai: openaiProvider,
+	openrouter: openrouterProvider,
 	fake: fakeProvider
 };
 
