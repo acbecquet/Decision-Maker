@@ -1,0 +1,14 @@
+node_modules
+.git
+.svelte-kit
+build
+data
+e2e/.tmp
+test-results
+playwright-report
+coverage
+.env
+.env.*
+!.env.example
+.superpowers
+docs

@@ -1,0 +1,8 @@
+dbs:
+  - path: /data/app.db
+    replica:
+      type: s3
+      bucket: ${BUCKET_NAME}
+      path: decision-maker
+      endpoint: ${AWS_ENDPOINT_URL_S3}
+      region: ${AWS_REGION}
