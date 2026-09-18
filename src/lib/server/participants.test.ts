@@ -14,7 +14,7 @@ import {
 import { readApprovedResponses } from './analysis/responses';
 import { makeDb, makeEvent, response } from './test-utils';
 import { eq } from 'drizzle-orm';
-import { events } from './db/schema';
+import { events, responses } from './db/schema';
 
 const device = (n: number) => n.toString(16).padStart(64, '0');
 
@@ -210,5 +210,19 @@ describe('readApprovedResponses', () => {
 				suggestion: ''
 			}
 		]);
+	});
+});
+
+describe('getMine after the purge', () => {
+	it('returns null instead of failing once the response row is gone', () => {
+		const db = makeDb();
+		const event = makeEvent(db);
+		const ids = listOptions(db, event.id).map((o) => o.id);
+		const p = submitResponse(db, event, ids, 'b'.repeat(64), response('Ana', [ids[0]]), {
+			autoApprove: true
+		});
+		expect(getMine(db, p)).not.toBeNull();
+		db.delete(responses).where(eq(responses.participantId, p.id)).run();
+		expect(getMine(db, p)).toBeNull();
 	});
 });

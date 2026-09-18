@@ -48,6 +48,11 @@ const countFor = (db: Db, eventId: string) => ({
 describe('publishEvent', () => {
 	it('purges responses and points, keeps participants and the report, and sets the dates', async () => {
 		const db = makeDb();
+		const other = makeEvent(db);
+		const otherIds = listOptions(db, other.id).map((o) => o.id);
+		submitResponse(db, other, otherIds, 'f'.repeat(64), response('Zed', [otherIds[0]]), {
+			autoApprove: true
+		});
 		const event = await drafted(db);
 		expect(countFor(db, event.id)).toEqual({ responses: 3, points: 2, participants: 3 });
 		const now = new Date('2026-09-18T12:00:00.000Z');
@@ -57,6 +62,7 @@ describe('publishEvent', () => {
 		expect(published.expiresAt).toBe('2026-12-17T12:00:00.000Z');
 		expect(published.report).toEqual(event.report);
 		expect(countFor(db, event.id)).toEqual({ responses: 0, points: 0, participants: 3 });
+		expect(countFor(db, other.id)).toEqual({ responses: 1, points: 0, participants: 1 });
 	});
 
 	it('refuses without a draft, twice, or while a run is going', async () => {

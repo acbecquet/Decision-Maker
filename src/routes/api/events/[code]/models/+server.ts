@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { ProviderError } from '$lib/server/analysis/contract';
+import { ProviderError, redact } from '$lib/server/analysis/contract';
 import { getProvider } from '$lib/server/analysis/provider';
 import { getDb } from '$lib/server/db';
 import { upstream } from '$lib/server/errors';
@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		try {
 			return json({ models: await getProvider(input.provider).listModels(input.key) });
 		} catch (e) {
-			if (e instanceof ProviderError) throw upstream(e.message);
+			if (e instanceof ProviderError) throw upstream(redact(e.message, input.key));
 			throw e;
 		}
 	} catch (e) {

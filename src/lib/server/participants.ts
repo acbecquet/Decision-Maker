@@ -101,10 +101,13 @@ export function updateResponse(
 		.run();
 }
 
-/** The participant's own submission. The only path that returns response data to a client. */
-export function getMine(db: DbLike, participant: ParticipantRow): MineView {
+/**
+ * The participant's own submission, or null once publishing has purged it.
+ * The only path that returns response data to a client.
+ */
+export function getMine(db: DbLike, participant: ParticipantRow): MineView | null {
 	const row = db.select().from(responses).where(eq(responses.participantId, participant.id)).get();
-	if (!row) throw notFound('Response not found');
+	if (!row) return null;
 	return {
 		name: participant.displayName,
 		ranking: row.ranking,

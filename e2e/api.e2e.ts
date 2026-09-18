@@ -547,10 +547,31 @@ test.describe('analysis API', () => {
 			).status()
 		).toBe(404);
 
+		const dbFile = new Database('e2e/.tmp/e2e.db', { fileMustExist: true });
+		const countAll = (table: string) =>
+			(dbFile.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
+		const responsesBefore = countAll('responses');
+
 		expect((await request.post(`/api/events/${code}/publish`)).status()).toBe(403);
-		const published = await request.post(`/api/events/${code}/publish`, { headers: host });
+		const published = await request.post(`/api/events/${code}/publish`, {
+			headers: { ...host, 'x-participant-token': devices[0] }
+		});
 		expect(published.status()).toBe(200);
 		expect((await published.json()).event.state).toBe('published');
+
+		const anaPage = await request.get(`/api/events/${code}`, {
+			headers: { 'x-participant-token': devices[0] }
+		});
+		expect(anaPage.status()).toBe(200);
+		expect(await anaPage.json()).toMatchObject({
+			role: 'participant',
+			mine: null,
+			event: { state: 'published' }
+		});
+		const hostPage = await request.get(`/api/events/${code}`, {
+			headers: { ...host, 'x-participant-token': devices[0] }
+		});
+		expect((await hostPage.json()).role).toBe('host');
 
 		const approved = await request.get(`/api/events/${code}/report`, {
 			headers: { 'x-participant-token': devices[0] }
@@ -572,9 +593,9 @@ test.describe('analysis API', () => {
 			409
 		);
 
-		const dbFile = new Database('e2e/.tmp/e2e.db', { fileMustExist: true });
 		try {
 			const count = (sql: string) => (dbFile.prepare(sql).get(code) as { n: number }).n;
+			expect(countAll('responses')).toBe(responsesBefore - 6);
 			expect(
 				count(
 					'SELECT count(*) AS n FROM responses r JOIN participants p ON p.id = r.participant_id JOIN events e ON e.id = p.event_id WHERE e.code = ?'
