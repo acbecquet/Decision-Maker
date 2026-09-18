@@ -11,7 +11,8 @@ export const magicLinks = sqliteTable('magic_links', {
 	tokenHash: text('token_hash').primaryKey(),
 	email: text('email').notNull(),
 	expiresAt: text('expires_at').notNull(),
-	usedAt: text('used_at')
+	usedAt: text('used_at'),
+	nonceHash: text('nonce_hash')
 });
 
 export const sessions = sqliteTable('sessions', {

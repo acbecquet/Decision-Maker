@@ -661,6 +661,27 @@ test.describe('accounts API', () => {
 		expect(setCookie).toMatch(/SameSite=Lax/i);
 		expect(setCookie).toMatch(/Path=\//);
 		expect(setCookie).not.toMatch(/Secure/i);
+
+		const otherEmail = `stranger-${code}@example.test`;
+		const otherSent = await request.post('/api/auth/magic-link', { data: { email: otherEmail } });
+		expect(otherSent.status()).toBe(200);
+		const signinCookie = otherSent.headers()['set-cookie'] ?? '';
+		expect(signinCookie).toMatch(/^dm_signin=[0-9a-f]{64};/);
+		expect(signinCookie).toMatch(/HttpOnly/i);
+		const otherMail = await request.get(`/api/test/mail?to=${encodeURIComponent(otherEmail)}`);
+		const otherToken = new URL((await otherMail.json()).url).searchParams.get('token')!;
+
+		const otherDevice = await playwright.request.newContext({
+			baseURL: test.info().project.use.baseURL
+		});
+		const strangeExchange = await otherDevice.post('/api/auth/session', {
+			data: { token: otherToken, hostTokens: [] }
+		});
+		expect(strangeExchange.status()).toBe(400);
+		expect((await strangeExchange.json()).message).toMatch(/browser that asked for it/);
+		expect((await otherDevice.get('/api/me')).status()).toBe(401);
+		await otherDevice.dispose();
+
 		expect(
 			(await request.post('/api/auth/session', { data: { token: magic, hostTokens: [] } })).status()
 		).toBe(400);

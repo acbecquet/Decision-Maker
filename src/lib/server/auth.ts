@@ -1,5 +1,5 @@
 import { and, count, desc, eq, isNull, sql } from 'drizzle-orm';
-import { isTokenShape, newId, sha256Hex } from './crypto';
+import { isTokenShape, newId, safeEqualHex, sha256Hex } from './crypto';
 import type { DbLike } from './db';
 import { accounts, events, magicLinks, participants, sessions } from './db/schema';
 import { badRequest } from './errors';
@@ -11,6 +11,7 @@ import { randomBytes } from 'node:crypto';
 export const MAGIC_LINK_TTL_MS = 15 * 60_000;
 export const SESSION_TTL_DAYS = 90;
 export const SESSION_COOKIE = 'dm_session';
+export const SIGNIN_COOKIE = 'dm_signin';
 
 export type AccountEvent = {
 	code: string;
@@ -22,28 +23,31 @@ export type AccountEvent = {
 
 const newSecret = () => randomBytes(32).toString('hex');
 
-/** Stores the hash of a fresh single-use token for the address and returns the token for the mailer. */
+/** Stores the hash of a fresh single-use token and nonce for the address, for the mailer and the browser cookie. */
 export function createMagicLink(
 	db: DbLike,
 	rawEmail: string,
 	now = new Date()
-): { token: string; email: string } {
+): { token: string; email: string; nonce: string } {
 	const email = normalizeEmail(rawEmail);
 	const token = newSecret();
+	const nonce = newSecret();
 	db.insert(magicLinks)
 		.values({
 			tokenHash: sha256Hex(token),
 			email,
-			expiresAt: new Date(now.getTime() + MAGIC_LINK_TTL_MS).toISOString()
+			expiresAt: new Date(now.getTime() + MAGIC_LINK_TTL_MS).toISOString(),
+			nonceHash: sha256Hex(nonce)
 		})
 		.run();
-	return { token, email };
+	return { token, email, nonce };
 }
 
 /** Marks the link used, creates the account on first sign-in, and opens a ninety-day session. */
 export function redeemMagicLink(
 	db: DbLike,
 	token: string,
+	nonce: string | undefined,
 	now = new Date()
 ): { sessionToken: string; accountId: string; email: string } {
 	if (!isTokenShape(token)) throw badRequest('This sign-in link is not valid');
@@ -54,6 +58,15 @@ export function redeemMagicLink(
 		if (!link) throw badRequest('This sign-in link is not valid');
 		if (link.usedAt) throw badRequest('This sign-in link has already been used');
 		if (link.expiresAt <= nowIso) throw badRequest('This sign-in link has expired');
+		if (
+			!isTokenShape(nonce) ||
+			!link.nonceHash ||
+			!safeEqualHex(sha256Hex(nonce), link.nonceHash)
+		) {
+			throw badRequest(
+				'This sign-in link has to be opened in the browser that asked for it. Ask for a new link here.'
+			);
+		}
 		// The single-use guard lives in the write itself, so two redemptions can never both succeed.
 		const claimed = tx
 			.update(magicLinks)

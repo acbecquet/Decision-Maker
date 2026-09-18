@@ -64,3 +64,27 @@ test('a used link is refused with a plain message', async ({ browser, request })
 	await expect(page.getByRole('alert')).toContainText('already been used');
 	await context.close();
 });
+
+test('a link opened on a different device than the one that requested it is refused', async ({
+	browser,
+	request
+}) => {
+	const email = `bound-${token().slice(0, 8)}@example.test`;
+
+	const requester = await newDevice(browser);
+	await requester.page.goto('/signin');
+	await requester.page.getByLabel('Email').fill(email);
+	await requester.page.getByRole('button', { name: 'Send link' }).click();
+	await expect(requester.page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+	await requester.context.close();
+
+	const link = new URL(
+		(await (await request.get(`/api/test/mail?to=${encodeURIComponent(email)}`)).json()).url
+	);
+
+	const { page, context } = await newDevice(browser);
+	await page.goto(link.pathname + link.search);
+	await page.getByRole('button', { name: 'Finish signing in' }).click();
+	await expect(page.getByRole('alert')).toContainText('browser that asked for it');
+	await context.close();
+});

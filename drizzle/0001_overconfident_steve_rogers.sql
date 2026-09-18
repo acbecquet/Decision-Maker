@@ -1,0 +1,1 @@
+ALTER TABLE `magic_links` ADD `nonce_hash` text;
