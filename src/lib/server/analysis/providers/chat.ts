@@ -52,7 +52,7 @@ const mentionsEffort = (e: unknown) =>
 	e instanceof OpenAI.BadRequestError && /reasoning|effort/i.test(e.message);
 
 export function createChatProvider(config: ChatProviderConfig): ModelProvider {
-	const client = (key: string, timeout = ANALYSIS.stageTimeoutMs.anonymize) =>
+	const client = (key: string, timeout: number = ANALYSIS.stageTimeoutMs.anonymize) =>
 		new OpenAI({
 			apiKey: key,
 			baseURL: config.baseURL,

@@ -16,7 +16,11 @@ const MAX_NON_STREAMING_TOKENS = 16_000;
 
 type Deps = { fetch?: typeof fetch };
 
-function client(key: string, deps: Deps, timeout = ANALYSIS.stageTimeoutMs.anonymize): Anthropic {
+function client(
+	key: string,
+	deps: Deps,
+	timeout: number = ANALYSIS.stageTimeoutMs.anonymize
+): Anthropic {
 	return new Anthropic({
 		apiKey: key,
 		maxRetries: 0,
