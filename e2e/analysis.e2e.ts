@@ -75,7 +75,15 @@ test('the host runs the fake analysis, reads the draft, publishes, and only appr
 	await expect(report.getByRole('heading', { name: 'First choices' })).toBeVisible();
 	await expect(report).toContainText('What people said');
 	await expect(report.locator('blockquote').first()).toBeVisible();
-	await expect(page.getByRole('heading', { name: 'Numbers' })).toHaveCount(0);
+	// The only Numbers heading left is the one inside the report; the standalone section is gone.
+	await expect(page.getByRole('heading', { name: 'Numbers' })).toHaveCount(1);
+	await expect(report.getByRole('heading', { name: 'Numbers' })).toHaveCount(1);
+
+	await page.getByRole('button', { name: 'Run again' }).click();
+	await expect(page.getByLabel('Model')).toHaveValue('fake-slow');
+	await expect(page.getByTestId('report')).toHaveCount(0);
+	await page.getByRole('button', { name: 'Back to the draft' }).click();
+	await expect(page.getByTestId('report')).toBeVisible();
 
 	await page.getByRole('button', { name: 'Publish' }).click();
 	await expect(page.getByRole('dialog')).toContainText('Raw rankings and opinions are deleted');
