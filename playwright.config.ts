@@ -30,6 +30,7 @@ export default defineConfig({
 			ORIGIN: `http://localhost:${port}`,
 			DATABASE_URL: 'e2e/.tmp/e2e.db',
 			ALLOW_FAKE_PROVIDER: '1',
+			RATE_LIMIT_SCALE: '10',
 			NODE_ENV: 'production'
 		}
 	}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RateLimiter } from './ratelimit';
+import { RateLimiter, rateLimitScale } from './ratelimit';
 
 describe('RateLimiter', () => {
 	it('allows up to the limit inside the window and refuses after', () => {
@@ -25,5 +25,14 @@ describe('RateLimiter', () => {
 		limiter.allow('k', 1, 1_000, 0);
 		limiter.prune(10_000, 5_000);
 		expect(limiter.size).toBe(0);
+	});
+});
+
+describe('rateLimitScale', () => {
+	it('defaults to 1 and only accepts a multiplier of at least 1', () => {
+		expect(rateLimitScale({})).toBe(1);
+		expect(rateLimitScale({ RATE_LIMIT_SCALE: '10' })).toBe(10);
+		expect(rateLimitScale({ RATE_LIMIT_SCALE: '0' })).toBe(1);
+		expect(rateLimitScale({ RATE_LIMIT_SCALE: 'abc' })).toBe(1);
 	});
 });

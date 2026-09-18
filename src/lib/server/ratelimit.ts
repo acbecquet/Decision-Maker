@@ -28,9 +28,18 @@ export class RateLimiter {
 
 export const limiter = new RateLimiter();
 
+/**
+ * Multiplies every limit. Test suites set RATE_LIMIT_SCALE so a long run cannot exhaust the
+ * per-IP limits; production leaves it unset, which means 1.
+ */
+export function rateLimitScale(env: NodeJS.ProcessEnv = process.env): number {
+	const parsed = Number(env.RATE_LIMIT_SCALE);
+	return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1;
+}
+
 /** Throws a 429 AppError when the key has exceeded its limit. */
 export function enforce(key: string, limit: number, windowMs: number): void {
-	if (!limiter.allow(key, limit, windowMs)) {
+	if (!limiter.allow(key, limit * rateLimitScale(), windowMs)) {
 		throw tooMany('Too many requests, try again in a moment');
 	}
 }
