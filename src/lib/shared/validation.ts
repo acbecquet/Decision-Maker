@@ -77,6 +77,16 @@ export const runAnalysisInput = z
 	})
 	.refine(looksLikeKey, keyLengthIssue);
 
+const hostTokens = z.array(z.string()).max(200).default([]);
+
+export const magicLinkInput = z.object({
+	email: z.string().trim().toLowerCase().email('Enter an email address').max(254)
+});
+
+export const sessionInput = z.object({ token: z.string().min(1), hostTokens });
+
+export const claimInput = z.object({ hostTokens });
+
 export type CreateEventInput = z.infer<typeof createEventInput>;
 export type ResponseInput = z.infer<typeof responseInput>;
 export type EditResponseInput = z.infer<typeof editResponseInput>;

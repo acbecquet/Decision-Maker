@@ -9,39 +9,39 @@ import { requireHost } from '$lib/server/roles';
 import { buildEventPageView, loadEventOr404 } from '$lib/server/views';
 import { createEventInput, patchEventInput } from '$lib/shared/validation';
 
-export const GET: RequestHandler = ({ params, request }) => {
+export const GET: RequestHandler = ({ params, request, locals }) => {
 	try {
 		const db = getDb();
 		const event = loadEventOr404(db, params.code);
-		return json(buildEventPageView(db, event, request));
+		return json(buildEventPageView(db, event, request, locals.accountId));
 	} catch (e) {
 		raise(e);
 	}
 };
 
-export const PATCH: RequestHandler = async ({ params, request }) => {
+export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const db = getDb();
 		const event = loadEventOr404(db, params.code);
-		requireHost(event, request);
+		requireHost(event, request, locals.accountId);
 		const input = await readJson(request, patchEventInput);
 		if (input.closesAt && Date.parse(input.closesAt) <= Date.now()) {
 			throw badRequest('The auto-close time has to be in the future');
 		}
 		const updated = setClosesAt(db, event, input.closesAt);
-		return json(buildEventPageView(db, updated, request));
+		return json(buildEventPageView(db, updated, request, locals.accountId));
 	} catch (e) {
 		raise(e);
 	}
 };
 
 /** Edits the whole event and rotates its code. Only while open and before the first submission. */
-export const PUT: RequestHandler = async ({ params, request, getClientAddress }) => {
+export const PUT: RequestHandler = async ({ params, request, getClientAddress, locals }) => {
 	try {
 		enforce(`create:${getClientAddress()}`, 20, 3_600_000);
 		const db = getDb();
 		const event = loadEventOr404(db, params.code);
-		requireHost(event, request);
+		requireHost(event, request, locals.accountId);
 		const input = await readJson(request, createEventInput);
 		if (input.closesAt && Date.parse(input.closesAt) <= Date.now()) {
 			throw badRequest('The auto-close time has to be in the future');

@@ -1,5 +1,7 @@
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from './crypto';
+import { accounts, events } from './db/schema';
 import { listOptions } from './events';
 import { submitResponse } from './participants';
 import { isHost, participantFromRequest, requireHost, tokenFromHeader } from './roles';
@@ -27,6 +29,24 @@ describe('isHost', () => {
 		expect(isHost(event, req({ 'x-host-token': 'd'.repeat(64) }))).toBe(false);
 		expect(isHost(event, req({}))).toBe(false);
 		expect(() => requireHost(event, req({}))).toThrow(/Host only/);
+	});
+});
+
+describe('isHost with an account session', () => {
+	it('accepts the owning account without a token and rejects other accounts', () => {
+		const db = makeDb();
+		const event = makeEvent(db);
+		// events.accountId has a foreign key to accounts.id, so the row must exist first.
+		db.insert(accounts)
+			.values({ id: 'acc-1', email: 'acc-1@example.test', createdAt: new Date().toISOString() })
+			.run();
+		db.update(events).set({ accountId: 'acc-1' }).where(eq(events.id, event.id)).run();
+		const owned = { ...event, accountId: 'acc-1' };
+		const bare = new Request('http://x.test/');
+		expect(isHost(owned, bare, 'acc-1')).toBe(true);
+		expect(isHost(owned, bare, 'acc-2')).toBe(false);
+		expect(isHost(owned, bare, null)).toBe(false);
+		expect(isHost({ ...event, accountId: null }, bare, 'acc-1')).toBe(false);
 	});
 });
 

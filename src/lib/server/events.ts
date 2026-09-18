@@ -20,6 +20,7 @@ export function createEvent(
 	db: Db,
 	input: CreateEventInput,
 	hostTokenHash: string,
+	accountId: string | null = null,
 	now = new Date()
 ): EventRow {
 	const id = newId();
@@ -33,6 +34,7 @@ export function createEvent(
 				context: input.context,
 				currency: input.currency,
 				hostTokenHash,
+				accountId,
 				closesAt: input.closesAt ? toIso(input.closesAt) : null,
 				expiresAt: addDays(now, EVENT_TTL_DAYS).toISOString(),
 				createdAt: now.toISOString()

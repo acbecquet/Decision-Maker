@@ -10,11 +10,11 @@ import { loadEventOr404 } from '$lib/server/views';
 import { modelsInput } from '$lib/shared/validation';
 
 /** Lists the models a key can use. The key is in the body, used once, and dropped. */
-export const POST: RequestHandler = async ({ params, request }) => {
+export const POST: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const db = getDb();
 		const event = loadEventOr404(db, params.code);
-		requireHost(event, request);
+		requireHost(event, request, locals.accountId);
 		const input = await readJson(request, modelsInput);
 		try {
 			return json({ models: await getProvider(input.provider).listModels(input.key) });

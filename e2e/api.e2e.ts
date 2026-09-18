@@ -616,3 +616,77 @@ test.describe('analysis API', () => {
 		}
 	});
 });
+
+test.describe('accounts API', () => {
+	test('signs in by magic link, claims the device events, owns new ones, and signs out', async ({
+		request,
+		playwright
+	}) => {
+		const hostToken = token();
+		const code = await createEventApi(request, hostToken);
+		const email = `host-${code}@example.test`;
+
+		expect((await request.get('/api/me')).status()).toBe(401);
+		const sent = await request.post('/api/auth/magic-link', {
+			data: { email: ` ${email.toUpperCase()} ` }
+		});
+		expect(sent.status()).toBe(200);
+		const mail = await request.get(`/api/test/mail?to=${encodeURIComponent(email)}`);
+		expect(mail.status()).toBe(200);
+		const link = new URL((await mail.json()).url);
+		expect(link.pathname).toBe('/signin/callback');
+		const magic = link.searchParams.get('token')!;
+		expect(magic).toMatch(/^[0-9a-f]{64}$/);
+
+		const session = await request.post('/api/auth/session', {
+			data: { token: magic, hostTokens: [hostToken, 'junk'] }
+		});
+		expect(session.status()).toBe(200);
+		expect(await session.json()).toEqual({ email, claimed: 1 });
+		expect(
+			(await request.post('/api/auth/session', { data: { token: magic, hostTokens: [] } })).status()
+		).toBe(400);
+
+		const me = await request.get('/api/me');
+		expect(me.status()).toBe(200);
+		const body = await me.json();
+		expect(body.email).toBe(email);
+		expect(body.events.map((e: { code: string }) => e.code)).toEqual([code]);
+
+		const asAccount = await request.get(`/api/events/${code}`);
+		expect((await asAccount.json()).role).toBe('host');
+
+		const owned = await request.post('/api/events', {
+			headers: { 'x-host-token': token() },
+			data: { title: 'Owned', currency: 'EUR', options: [{ label: 'a' }, { label: 'b' }] }
+		});
+		expect(owned.status()).toBe(201);
+		const { code: ownedCode } = await owned.json();
+		expect(
+			((await (await request.get('/api/me')).json()).events as { code: string }[]).map(
+				(e) => e.code
+			)
+		).toEqual([ownedCode, code]);
+
+		const fresh = await playwright.request.newContext({ baseURL: test.info().project.use.baseURL });
+		expect((await fresh.get(`/api/events/${ownedCode}`)).status()).toBe(200);
+		expect((await (await fresh.get(`/api/events/${ownedCode}`)).json()).role).toBe('participant');
+		await fresh.dispose();
+
+		expect((await request.post('/api/auth/signout')).status()).toBe(200);
+		expect((await request.get('/api/me')).status()).toBe(401);
+		expect((await (await request.get(`/api/events/${code}`)).json()).role).toBe('participant');
+	});
+
+	test('sign-in input is validated and unknown links are refused', async ({ request }) => {
+		expect((await request.post('/api/auth/magic-link', { data: { email: 'nope' } })).status()).toBe(
+			400
+		);
+		expect(
+			(
+				await request.post('/api/auth/session', { data: { token: 'f'.repeat(64), hostTokens: [] } })
+			).status()
+		).toBe(400);
+		expect((await request.get('/api/test/mail?to=nobody@example.test')).status()).toBe(404);
+	});
+});

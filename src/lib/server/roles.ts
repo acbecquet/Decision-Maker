@@ -12,13 +12,23 @@ export function tokenFromHeader(request: Request, name: TokenHeader): string | n
 	return isTokenShape(value) ? value : null;
 }
 
-export function isHost(event: EventRow, request: Request): boolean {
+/** A host is the device holding the host token, or a signed-in account that owns the event. */
+export function isHost(
+	event: EventRow,
+	request: Request,
+	accountId: string | null = null
+): boolean {
+	if (accountId && event.accountId === accountId) return true;
 	const token = tokenFromHeader(request, 'x-host-token');
 	return token !== null && safeEqualHex(sha256Hex(token), event.hostTokenHash);
 }
 
-export function requireHost(event: EventRow, request: Request): void {
-	if (!isHost(event, request)) throw forbidden('Host only');
+export function requireHost(
+	event: EventRow,
+	request: Request,
+	accountId: string | null = null
+): void {
+	if (!isHost(event, request, accountId)) throw forbidden('Host only');
 }
 
 export function participantFromRequest(

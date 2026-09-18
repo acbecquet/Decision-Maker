@@ -6,13 +6,13 @@ import { approveAllPending } from '$lib/server/participants';
 import { requireHost } from '$lib/server/roles';
 import { buildEventPageView, loadEventOr404 } from '$lib/server/views';
 
-export const POST: RequestHandler = ({ params, request }) => {
+export const POST: RequestHandler = ({ params, request, locals }) => {
 	try {
 		const db = getDb();
 		const event = loadEventOr404(db, params.code);
-		requireHost(event, request);
+		requireHost(event, request, locals.accountId);
 		approveAllPending(db, event);
-		return json(buildEventPageView(db, event, request));
+		return json(buildEventPageView(db, event, request, locals.accountId));
 	} catch (e) {
 		raise(e);
 	}

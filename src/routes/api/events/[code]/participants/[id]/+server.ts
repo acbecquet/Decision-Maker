@@ -7,14 +7,14 @@ import { requireHost } from '$lib/server/roles';
 import { buildEventPageView, loadEventOr404 } from '$lib/server/views';
 import { participantStatusInput } from '$lib/shared/validation';
 
-export const PATCH: RequestHandler = async ({ params, request }) => {
+export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const db = getDb();
 		const event = loadEventOr404(db, params.code);
-		requireHost(event, request);
+		requireHost(event, request, locals.accountId);
 		const input = await readJson(request, participantStatusInput);
 		setParticipantStatus(db, event, params.id, input.status);
-		return json(buildEventPageView(db, event, request));
+		return json(buildEventPageView(db, event, request, locals.accountId));
 	} catch (e) {
 		raise(e);
 	}

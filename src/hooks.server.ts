@@ -1,4 +1,5 @@
 import type { Handle, ServerInit } from '@sveltejs/kit';
+import { accountIdForSession, SESSION_COOKIE } from '$lib/server/auth';
 import { getDb } from '$lib/server/db';
 import { closeDueEvents } from '$lib/server/events';
 import { limiter } from '$lib/server/ratelimit';
@@ -19,6 +20,7 @@ export const init: ServerInit = async () => {
 };
 
 export const handle: Handle = async ({ event, resolve }) => {
+	event.locals.accountId = accountIdForSession(getDb(), event.cookies.get(SESSION_COOKIE));
 	const response = await resolve(event);
 	response.headers.set('x-content-type-options', 'nosniff');
 	response.headers.set('referrer-policy', 'no-referrer');

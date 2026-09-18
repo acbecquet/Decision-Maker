@@ -11,7 +11,7 @@ import { isHost, participantFromRequest, tokenFromHeader } from '$lib/server/rol
 import { loadEventOr404 } from '$lib/server/views';
 import { editResponseInput, responseInput } from '$lib/shared/validation';
 
-export const POST: RequestHandler = async ({ params, request, getClientAddress }) => {
+export const POST: RequestHandler = async ({ params, request, getClientAddress, locals }) => {
 	try {
 		enforce(`submit:${params.code}:${getClientAddress()}`, 10, 60_000);
 		const db = getDb();
@@ -21,7 +21,7 @@ export const POST: RequestHandler = async ({ params, request, getClientAddress }
 		const input = await readJson(request, responseInput);
 		const ids = listOptions(db, event.id).map((o) => o.id);
 		const participant = submitResponse(db, event, ids, sha256Hex(participantToken), input, {
-			autoApprove: isHost(event, request)
+			autoApprove: isHost(event, request, locals.accountId)
 		});
 		return json({ participantId: participant.id }, { status: 201 });
 	} catch (e) {

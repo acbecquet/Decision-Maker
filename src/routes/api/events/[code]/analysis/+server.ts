@@ -11,11 +11,11 @@ import { loadEventOr404 } from '$lib/server/views';
 import { ANALYSIS } from '$lib/shared/constants';
 import { runAnalysisInput } from '$lib/shared/validation';
 
-export const POST: RequestHandler = async ({ params, request }) => {
+export const POST: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const db = getDb();
 		const event = loadEventOr404(db, params.code);
-		requireHost(event, request);
+		requireHost(event, request, locals.accountId);
 		// The same preconditions startAnalysis re-checks, so a refused attempt never burns the run budget.
 		if (!event.rosterFinal || !event.aggregates) {
 			throw conflict('Close submissions before running the analysis');
@@ -31,11 +31,11 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	}
 };
 
-export const GET: RequestHandler = ({ params, request }) => {
+export const GET: RequestHandler = ({ params, request, locals }) => {
 	try {
 		const db = getDb();
 		const event = loadEventOr404(db, params.code);
-		requireHost(event, request);
+		requireHost(event, request, locals.accountId);
 		return json(analysisStatus(db, event));
 	} catch (e) {
 		raise(e);

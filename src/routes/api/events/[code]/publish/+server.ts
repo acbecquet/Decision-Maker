@@ -6,12 +6,12 @@ import { publishEvent } from '$lib/server/publish';
 import { requireHost } from '$lib/server/roles';
 import { buildEventPageView, loadEventOr404 } from '$lib/server/views';
 
-export const POST: RequestHandler = ({ params, request }) => {
+export const POST: RequestHandler = ({ params, request, locals }) => {
 	try {
 		const db = getDb();
 		const event = loadEventOr404(db, params.code);
-		requireHost(event, request);
-		return json(buildEventPageView(db, publishEvent(db, event), request));
+		requireHost(event, request, locals.accountId);
+		return json(buildEventPageView(db, publishEvent(db, event), request, locals.accountId));
 	} catch (e) {
 		raise(e);
 	}

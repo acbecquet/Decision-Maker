@@ -30,7 +30,7 @@ describe('createEvent', () => {
 	it('stores the event with a code, ordered options, and a 90-day expiry', () => {
 		const db = openDatabase(':memory:');
 		const now = new Date('2026-09-17T10:00:00.000Z');
-		const event = createEvent(db, input, hash, now);
+		const event = createEvent(db, input, hash, null, now);
 		expect(event.code).toHaveLength(10);
 		for (const ch of event.code) expect(EVENT_CODE_ALPHABET).toContain(ch);
 		expect(event.state).toBe('open');
@@ -67,9 +67,21 @@ describe('auto-close', () => {
 	it('closes only events whose deadline has passed and leaves the roster open', () => {
 		const db = openDatabase(':memory:');
 		const now = new Date('2026-09-17T10:00:00.000Z');
-		const due = createEvent(db, { ...input, closesAt: '2026-09-17T09:59:00.000Z' }, hash, now);
-		const later = createEvent(db, { ...input, closesAt: '2026-09-17T10:01:00.000Z' }, hash, now);
-		const never = createEvent(db, input, hash, now);
+		const due = createEvent(
+			db,
+			{ ...input, closesAt: '2026-09-17T09:59:00.000Z' },
+			hash,
+			null,
+			now
+		);
+		const later = createEvent(
+			db,
+			{ ...input, closesAt: '2026-09-17T10:01:00.000Z' },
+			hash,
+			null,
+			now
+		);
+		const never = createEvent(db, input, hash, null, now);
 		expect(closeDueEvents(db, now)).toBe(1);
 		const closed = findEventByCode(db, due.code);
 		expect(closed?.state).toBe('closed');

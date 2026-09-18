@@ -16,11 +16,16 @@ export function loadEventOr404(db: Db, code: string | undefined, now = new Date(
 }
 
 /** The role-aware view of an event. The host block never contains rankings, budgets, or opinions. */
-export function buildEventPageView(db: Db, event: EventRow, request: Request): EventPageView {
+export function buildEventPageView(
+	db: Db,
+	event: EventRow,
+	request: Request,
+	accountId: string | null = null
+): EventPageView {
 	const view = toEventView(event, listOptions(db, event.id));
 	const participant = participantFromRequest(db, event, request);
 	const mine = participant ? getMine(db, participant) : null;
-	if (!isHost(event, request)) {
+	if (!isHost(event, request, accountId)) {
 		return { role: 'participant', event: view, mine, host: null };
 	}
 	return {
@@ -41,9 +46,14 @@ export function buildEventPageView(db: Db, event: EventRow, request: Request): E
  * The report for whoever may see it: the host at any time once a draft exists, an approved
  * participant once published. Everyone else gets the same 404, which reveals nothing about their status.
  */
-export function buildReportView(db: Db, event: EventRow, request: Request): ReportView {
+export function buildReportView(
+	db: Db,
+	event: EventRow,
+	request: Request,
+	accountId: string | null = null
+): ReportView {
 	const report = event.report as Report | null;
-	const host = isHost(event, request);
+	const host = isHost(event, request, accountId);
 	const participant = host ? undefined : participantFromRequest(db, event, request);
 	const approvedReader = event.state === 'published' && participant?.status === 'approved';
 	if (!report || report.version !== 1 || !event.aggregates || !(host || approvedReader))
