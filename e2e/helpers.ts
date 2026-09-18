@@ -129,3 +129,18 @@ export async function openAsHost(
 	await device.page.goto(`/e/${code}`);
 	return device;
 }
+
+/** Opens the event on a fresh device that already holds a participant token, as a device that submitted would. */
+export async function openAsParticipant(
+	browser: Browser,
+	code: string,
+	participantToken: string
+): Promise<{ context: BrowserContext; page: Page }> {
+	const device = await newDevice(browser);
+	await device.context.addInitScript(
+		([key, value]) => localStorage.setItem(key, value),
+		[`dm:${code}:participant`, participantToken]
+	);
+	await device.page.goto(`/e/${code}`);
+	return device;
+}
