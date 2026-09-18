@@ -20,7 +20,10 @@ export const init: ServerInit = async () => {
 };
 
 export const handle: Handle = async ({ event, resolve }) => {
-	event.locals.accountId = accountIdForSession(getDb(), event.cookies.get(SESSION_COOKIE));
+	const sessionCookie = event.cookies.get(SESSION_COOKIE);
+	event.locals.accountId = accountIdForSession(getDb(), sessionCookie);
+	// A cookie that no longer resolves (expired, signed out elsewhere) is dropped instead of being sent forever.
+	if (sessionCookie && !event.locals.accountId) event.cookies.delete(SESSION_COOKIE, { path: '/' });
 	const response = await resolve(event);
 	response.headers.set('x-content-type-options', 'nosniff');
 	response.headers.set('referrer-policy', 'no-referrer');

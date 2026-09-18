@@ -643,6 +643,12 @@ test.describe('accounts API', () => {
 		});
 		expect(session.status()).toBe(200);
 		expect(await session.json()).toEqual({ email, claimed: 1 });
+		const setCookie = session.headers()['set-cookie'] ?? '';
+		expect(setCookie).toMatch(/^dm_session=[0-9a-f]{64};/);
+		expect(setCookie).toMatch(/HttpOnly/i);
+		expect(setCookie).toMatch(/SameSite=Lax/i);
+		expect(setCookie).toMatch(/Path=\//);
+		expect(setCookie).not.toMatch(/Secure/i);
 		expect(
 			(await request.post('/api/auth/session', { data: { token: magic, hostTokens: [] } })).status()
 		).toBe(400);
@@ -653,6 +659,10 @@ test.describe('accounts API', () => {
 		expect(body.email).toBe(email);
 		expect(body.events.map((e: { code: string }) => e.code)).toEqual([code]);
 
+		const cookieOnlyPatch = await request.patch(`/api/events/${code}`, {
+			data: { closesAt: null }
+		});
+		expect(cookieOnlyPatch.status()).toBe(200);
 		const asAccount = await request.get(`/api/events/${code}`);
 		expect((await asAccount.json()).role).toBe('host');
 

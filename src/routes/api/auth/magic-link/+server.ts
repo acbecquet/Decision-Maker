@@ -12,8 +12,8 @@ export const POST: RequestHandler = async ({ request, url, getClientAddress }) =
 	try {
 		const mailer = getMailer();
 		if (!mailer) throw new AppError(503, 'Sign-in is not set up on this server');
-		const input = await readJson(request, magicLinkInput);
 		enforce(`magic:ip:${getClientAddress()}`, 20, 3_600_000);
+		const input = await readJson(request, magicLinkInput);
 		enforce(`magic:addr:${input.email}`, 5, 3_600_000);
 		const { token, email } = createMagicLink(getDb(), input.email);
 		const link = new URL('/signin/callback', process.env.ORIGIN ?? url.origin);
