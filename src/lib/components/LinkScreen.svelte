@@ -17,7 +17,7 @@
 {/if}
 <h1>Your event is ready</h1>
 <p class="muted">{title}</p>
-<LinkCard {code} />
+<LinkCard {code} {title} />
 <p class="small muted">Host controls stay in this browser.</p>
 <button
 	type="button"

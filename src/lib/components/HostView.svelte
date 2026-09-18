@@ -96,7 +96,7 @@
 {/if}
 
 {#if host && event.state === 'open'}
-	<LinkCard {code} />
+	<LinkCard {code} title={event.title} />
 	{#if host.submittedCount === 0}
 		<button
 			type="button"

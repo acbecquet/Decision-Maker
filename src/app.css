@@ -397,3 +397,17 @@ dialog::backdrop {
 	color: var(--accent-text);
 	border-color: var(--accent);
 }
+
+.qr {
+	margin: 12px auto 0;
+	width: 160px;
+}
+
+.qr svg {
+	display: block;
+	width: 100%;
+	height: auto;
+	background: #fff;
+	padding: 6px;
+	border-radius: 6px;
+}

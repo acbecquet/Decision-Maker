@@ -24,6 +24,7 @@ test.describe('creating an event', () => {
 		const code = new URL(page.url()).pathname.split('/').pop() as string;
 		await expect(page.getByRole('heading', { name: 'Your event is ready' })).toBeVisible();
 		await expect(page.getByLabel('Share this link')).toHaveValue(new RegExp(`/e/${code}$`));
+		await expect(page.getByTestId('qr').locator('svg')).toBeVisible();
 
 		await page.getByRole('button', { name: 'Continue to host view' }).click();
 		await expect(page).toHaveURL(new RegExp(`/e/${code}$`));

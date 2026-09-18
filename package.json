@@ -32,6 +32,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^24",
+		"@types/qrcode": "^1.5.6",
 		"drizzle-kit": "^0.31.10",
 		"drizzle-orm": "^0.45.2",
 		"eslint": "^10.4.1",
@@ -51,6 +52,7 @@
 		"@anthropic-ai/sdk": "^0.126.0",
 		"better-sqlite3": "^13.0.2",
 		"openai": "^7.18.0",
+		"qrcode": "^1.5.4",
 		"resend": "^6.28.1",
 		"zod": "^4.6.5"
 	}
