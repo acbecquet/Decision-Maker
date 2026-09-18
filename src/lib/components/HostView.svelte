@@ -150,19 +150,14 @@
 	</div>
 
 	<h2>Close</h2>
-	<p class="small muted">
-		Closing is final. Names still pending are resolved in the next step, and nobody can submit or
-		edit after that.
-	</p>
 	<button type="button" class="btn-primary btn-block" onclick={() => closeDialog?.open()}>
 		Close submissions
 	</button>
 {:else if host && !event.rosterFinal}
 	<div class="card">
 		<h2 style="margin-top:0">Submissions closed automatically</h2>
-		<p class="muted">Resolve the pending names to see the numbers. This is final.</p>
 		<button type="button" class="btn-primary btn-block" onclick={() => closeDialog?.open()}>
-			Resolve pending names
+			Finish closing
 		</button>
 	</div>
 	<h2>Names</h2>
@@ -174,9 +169,13 @@
 	{/if}
 	<h2>Names</h2>
 	<Roster roster={host.roster} readonly={true} />
-	<p class="small muted">The roster is final.</p>
 {/if}
 
 {#if host && !event.rosterFinal}
-	<CloseDialog bind:this={closeDialog} {pendingNames} onconfirm={close} />
+	<CloseDialog
+		bind:this={closeDialog}
+		{pendingNames}
+		closed={event.state === 'closed'}
+		onconfirm={close}
+	/>
 {/if}

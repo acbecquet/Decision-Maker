@@ -82,9 +82,9 @@
 </ol>
 
 {#if unranked.length > 0}
-	<p class="small muted" style="margin:8px 0 6px">
-		{ranked.length === 0 ? 'Tap your first choice' : 'Not ranked yet, tap to add'}
-	</p>
+	{#if ranked.length > 0}
+		<p class="small muted" style="margin:8px 0 6px">Not ranked</p>
+	{/if}
 	<ul data-testid="unranked" style="list-style:none;padding:0;margin:0">
 		{#each unranked as option (option.id)}
 			<li class="row dashed">

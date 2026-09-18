@@ -9,9 +9,7 @@
 <div class="card">
 	<span class="pill pill-success">Submitted</span>
 	<h2 style="margin-top:8px">Thanks, {mine.name}</h2>
-	<p class="muted">
-		The host approves names before anything is shared. Your ranking and opinion stay private.
-	</p>
+	<p class="muted">The host approves names before anything is shared.</p>
 	<p class="label">Your ranking</p>
 	<ol style="margin:0 0 8px;padding-left:20px">
 		{#each mine.ranking as id (id)}

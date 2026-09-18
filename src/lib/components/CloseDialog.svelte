@@ -1,9 +1,13 @@
 <script lang="ts">
 	let {
 		pendingNames,
+		closed = false,
 		onconfirm
-	}: { pendingNames: string[]; onconfirm: (pending: 'approve' | 'reject') => Promise<boolean> } =
-		$props();
+	}: {
+		pendingNames: string[];
+		closed?: boolean;
+		onconfirm: (pending: 'approve' | 'reject') => Promise<boolean>;
+	} = $props();
 
 	let dialog: HTMLDialogElement | undefined = $state();
 	let busy = $state(false);
@@ -29,12 +33,14 @@
 </script>
 
 <dialog bind:this={dialog} aria-labelledby="close-dialog-title">
-	<h2 id="close-dialog-title" style="margin-top:0">Close submissions?</h2>
+	<h2 id="close-dialog-title" style="margin-top:0">
+		{closed ? 'Finish closing?' : 'Close submissions?'}
+	</h2>
 	{#if pendingCount > 0}
 		<p>
 			{pendingCount}
 			{pendingCount === 1 ? 'name is' : 'names are'} still pending: {pendingNames.join(', ')}.
-			Closing is final, so decide what happens to them.
+			Closing is final.
 		</p>
 		<div class="stack">
 			<button
@@ -53,7 +59,7 @@
 			</button>
 		</div>
 	{:else}
-		<p>Nobody can submit or edit after this, and there is no reopen.</p>
+		<p>Closing is final.</p>
 		<div class="stack">
 			<button
 				type="button"

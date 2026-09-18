@@ -15,7 +15,7 @@
 </script>
 
 {#if roster.length === 0}
-	<p class="muted">Nobody has submitted yet. Share the link.</p>
+	<p class="muted">Nobody has submitted yet.</p>
 {:else}
 	<ul style="list-style:none;padding:0;margin:0" data-testid="roster" role="list">
 		{#each roster as row, i (row.id)}

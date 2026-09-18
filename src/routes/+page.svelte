@@ -75,10 +75,6 @@
 
 <main>
 	<h1>DecisionMaker</h1>
-	<p class="muted">
-		Make a group decision without anyone stepping on toes. One link, honest answers, an anonymous
-		report.
-	</p>
 
 	<form onsubmit={submit} novalidate>
 		<label for="title">What are you deciding?</label>

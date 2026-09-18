@@ -9,10 +9,7 @@
 <h1>Your event is ready</h1>
 <p class="muted">{title}</p>
 <LinkCard {code} />
-<p class="small muted">
-	This device is the host. Keep using this browser to approve names, close submissions, and run the
-	analysis.
-</p>
+<p class="small muted">Host controls stay in this browser.</p>
 <button
 	type="button"
 	class="btn-primary btn-block"

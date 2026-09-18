@@ -39,7 +39,8 @@ test.describe('host', () => {
 		await expect(page.getByRole('button', { name: /Approve all pending/ })).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Close submissions' }).click();
-		await expect(page.getByRole('dialog')).toContainText('no reopen');
+		await expect(page.getByRole('dialog')).toContainText('Close submissions?');
+		await expect(page.getByRole('dialog')).toContainText('Closing is final');
 		await page.getByRole('button', { name: 'Close now' }).click();
 
 		await expect(page.getByText('Closed', { exact: true })).toBeVisible();
@@ -122,10 +123,11 @@ test.describe('host', () => {
 		const { page, context } = await openAsHost(browser, code, hostToken);
 		await expect(page.getByText('Submissions closed automatically')).toBeVisible();
 		await expect(page.getByText('First choices')).toHaveCount(0);
-		await page.getByRole('button', { name: 'Resolve pending names' }).click();
+		await page.getByRole('button', { name: 'Finish closing' }).click();
+		await expect(page.getByRole('dialog')).toContainText('Finish closing?');
 		await page.getByRole('button', { name: 'Reject pending and close' }).click();
 		await expect(page.getByText('0 approved responses')).toBeVisible();
-		await expect(page.getByText('The roster is final.')).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Numbers' })).toBeVisible();
 		await expect(page.getByRole('button', { name: /^(Approve|Reject) / })).toHaveCount(0);
 		await expect(page.getByRole('button', { name: /reopen/i })).toHaveCount(0);
 		await context.close();
