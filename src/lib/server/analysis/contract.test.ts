@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ProviderError, parseJsonText, preferFirst, redact } from './contract';
+import { ProviderError, capUpstreamMessage, parseJsonText, preferFirst, redact } from './contract';
 
 describe('parseJsonText', () => {
 	it('parses a bare object and one wrapped in prose or fences', () => {
@@ -24,6 +24,17 @@ describe('redact', () => {
 			redact('bad key sk-or-v1-abcdefgh used twice sk-or-v1-abcdefgh', 'sk-or-v1-abcdefgh')
 		).toBe('bad key [key] used twice [key]');
 		expect(redact('short', 'ab')).toBe('short');
+	});
+});
+
+describe('capUpstreamMessage', () => {
+	it('flattens whitespace and caps the length, so a verbose upstream body cannot blow up an error', () => {
+		expect(capUpstreamMessage('bad request')).toBe('bad request');
+		expect(capUpstreamMessage('line one\n\n  line   two\ttabbed')).toBe('line one line two tabbed');
+		expect(capUpstreamMessage('  padded  ')).toBe('padded');
+		const long = capUpstreamMessage('x'.repeat(500));
+		expect(long).toHaveLength(200);
+		expect(long).toBe('x'.repeat(200));
 	});
 });
 

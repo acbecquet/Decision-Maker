@@ -276,6 +276,67 @@ describe('startAnalysis', () => {
 		expect(calls).toBe(7); // 5 textful responses in closedEvent, plus 2 synthesize attempts
 	});
 
+	it('trims a verbose rewrite instead of failing the run: extra points and an overlong point are cut after parsing', async () => {
+		const db = makeDb();
+		const event = closedEvent(db);
+		const optionId = listOptions(db, event.id)[0].id;
+		const longText = 'x'.repeat(700);
+		const stub: ModelProvider = {
+			id: 'fake',
+			async listModels() {
+				return [];
+			},
+			async completeJson(req) {
+				if (req.payload.stage === 'anonymize') {
+					if (req.payload.input.opinion.includes('Ana')) {
+						return {
+							points: Array.from({ length: 13 }, (_, i) => ({
+								text: i === 0 ? longText : `Point ${i} about the plan.`,
+								type: 'reason',
+								optionIds: []
+							}))
+						};
+					}
+					return { points: [{ text: 'A short point.', type: 'reason', optionIds: [] }] };
+				}
+				return {
+					best: { optionId, verdict: 'v', rationale: 'r', consensus: 'moderate' },
+					runnerUp: { optionId, rationale: 'r' },
+					worst: { optionId, rationale: 'r' },
+					unexpected: null,
+					themes: [
+						{ title: 'T1', summary: 'S1', quotePointIds: [] },
+						{ title: 'T2', summary: 'S2', quotePointIds: [] },
+						{ title: 'T3', summary: 'S3', quotePointIds: [] }
+					],
+					stillToSettle: [],
+					summary: 'summary'
+				};
+			}
+		};
+		const { jobId, done } = startAnalysis(db, event, input, stub);
+		await done;
+		const job = db.select().from(analysisJobs).where(eq(analysisJobs.id, jobId)).get()!;
+		expect(job.status).toBe('succeeded');
+		const points = db
+			.select()
+			.from(anonymizedPoints)
+			.where(eq(anonymizedPoints.eventId, event.id))
+			.all();
+		const counts = new Map<string, number>();
+		for (const p of points) counts.set(p.participantId, (counts.get(p.participantId) ?? 0) + 1);
+		expect(counts.size).toBe(5); // the 5 textful responses in closedEvent
+		const trimmedId = [...counts.entries()].find(
+			([, c]) => c === ANALYSIS.maxPointsPerResponse
+		)?.[0];
+		expect(trimmedId).toBeDefined();
+		const trimmedPoints = points.filter((p) => p.participantId === trimmedId);
+		expect(trimmedPoints).toHaveLength(12);
+		expect(trimmedPoints.some((p) => p.text.length === ANALYSIS.maxPointChars)).toBe(true);
+		expect(trimmedPoints.every((p) => p.text.length <= ANALYSIS.maxPointChars)).toBe(true);
+		for (const [id, c] of counts) if (id !== trimmedId) expect(c).toBe(1);
+	});
+
 	it('fails the job when the headline option is still unusable after the retry', async () => {
 		const db = makeDb();
 		const event = closedEvent(db);

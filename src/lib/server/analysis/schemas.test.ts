@@ -44,6 +44,22 @@ describe('anonymizeOutput', () => {
 			anonymizeOutput.safeParse({ points: [{ text: '', type: 'reason', optionIds: [] }] }).success
 		).toBe(false);
 	});
+
+	it('accepts more than twelve points and text over 600 characters: the job trims, not the schema', () => {
+		const points = Array.from({ length: 13 }, (_, i) => ({
+			text: `Point number ${i}.`,
+			type: 'reason' as const,
+			optionIds: []
+		}));
+		const result = anonymizeOutput.safeParse({ points });
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data.points).toHaveLength(13);
+		expect(
+			anonymizeOutput.safeParse({
+				points: [{ text: 'x'.repeat(700), type: 'reason', optionIds: [] }]
+			}).success
+		).toBe(true);
+	});
 });
 
 describe('synthesizeOutput', () => {

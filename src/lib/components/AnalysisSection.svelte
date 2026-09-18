@@ -7,6 +7,7 @@
 	import ModelPanel from './ModelPanel.svelte';
 	import PublishDialog from './PublishDialog.svelte';
 	import ReportView from './ReportView.svelte';
+	import TalliesView from './TalliesView.svelte';
 
 	let {
 		view,
@@ -73,8 +74,17 @@
 	</div>
 	<PublishDialog bind:this={publishDialog} onconfirm={publish} message={publishError} />
 {:else}
+	{#if hasDraft && view.host?.tallies}
+		<h2>Numbers</h2>
+		<TalliesView
+			tallies={view.host.tallies}
+			options={view.event.options}
+			currency={view.event.currency}
+		/>
+	{/if}
 	<ModelPanel
 		{code}
+		{hasDraft}
 		onsucceeded={async () => {
 			rerun = false;
 			await onchange();

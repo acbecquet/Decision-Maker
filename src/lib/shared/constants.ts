@@ -60,10 +60,12 @@ export const ANALYSIS = {
 	/** Attempts for retryable provider errors. */
 	attempts: 3,
 	/** Runs per event per ten minutes. */
-	runsPerWindow: 3,
+	runsPerWindow: 6,
 	runWindowMs: 600_000,
 	minThemes: 3,
 	maxThemes: 6,
 	maxQuotesPerTheme: 3,
-	maxPointsPerResponse: 12
+	maxPointsPerResponse: 12,
+	/** A rewritten point longer than this is truncated after parsing, never rejected. */
+	maxPointChars: 600
 } as const;

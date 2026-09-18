@@ -16,7 +16,11 @@
 		ThinkingEffort
 	} from '$lib/shared/report';
 
-	let { code, onsucceeded }: { code: string; onsucceeded: () => Promise<void> | void } = $props();
+	let {
+		code,
+		hasDraft = false,
+		onsucceeded
+	}: { code: string; hasDraft?: boolean; onsucceeded: () => Promise<void> | void } = $props();
 
 	type Model = { id: string; label: string };
 	const EFFORT_LABELS: Record<ThinkingEffort, string> = {
@@ -25,6 +29,9 @@
 		high: 'High',
 		max: 'Max'
 	};
+	/** Poll backoff after a connection failure: 3s, 6s, 12s, then 12s again, up to this many in a row. */
+	const POLL_BACKOFF_MS = [3000, 6000, 12000];
+	const MAX_POLL_FAILURES = 10;
 
 	let providers = $state<ProviderInfo[]>([]);
 	let providerId = $state<ProviderId | null>(null);
@@ -141,18 +148,25 @@
 		}
 	}
 
-	async function poll() {
+	/**
+	 * `isInitial` marks the very first check after mount, before any run has been observed here.
+	 * A `failed` status found on that first check may just be a stale result from an earlier run,
+	 * so it is only shown when there is no draft to fall back on; it stops being "initial" the
+	 * moment a `running` status is actually observed, so a failure of a run we are watching always shows.
+	 */
+	async function poll(isInitial = false) {
 		clearTimeout(timer);
 		try {
 			status = await api<AnalysisStatus>(`/api/events/${code}/analysis`, { code });
 			pollFailures = 0;
 		} catch {
 			pollFailures += 1;
-			if (pollFailures >= 3) {
+			if (pollFailures >= MAX_POLL_FAILURES) {
 				error = 'Lost the connection while waiting, reload the page to check the result';
 				return;
 			}
-			timer = setTimeout(poll, 3000);
+			const delay = POLL_BACKOFF_MS[Math.min(pollFailures, POLL_BACKOFF_MS.length) - 1];
+			timer = setTimeout(() => poll(isInitial), delay);
 			return;
 		}
 		if (status.status === 'running') {
@@ -168,7 +182,7 @@
 				}
 			}
 		} else if (status.status === 'failed') {
-			error = status.error ?? 'The analysis failed, try again';
+			if (!(isInitial && hasDraft)) error = status.error ?? 'The analysis failed, try again';
 		}
 	}
 
@@ -183,7 +197,7 @@
 		if (remembered) effort = remembered.effort;
 		const initial = providers.find((p) => p.id === remembered?.provider) ?? providers[0];
 		if (initial) pick(initial.id);
-		await poll();
+		await poll(true);
 	});
 
 	onDestroy(() => clearTimeout(timer));

@@ -19,7 +19,13 @@ import { PROMPT_VERSION, anonymizePrompt, quotableIds, synthesizePrompt } from '
 import { buildReport, costMattersToSome } from './report';
 import { readApprovedResponses, type ApprovedResponse } from './responses';
 import { withRetry } from './retry';
-import { ANONYMIZE_SCHEMA, SYNTHESIZE_SCHEMA, anonymizeOutput, synthesizeOutput } from './schemas';
+import {
+	ANONYMIZE_SCHEMA,
+	SYNTHESIZE_SCHEMA,
+	anonymizeOutput,
+	synthesizeOutput,
+	type AnonymizeOutput
+} from './schemas';
 
 const MAX_TOKENS = { anonymize: 16_000, synthesize: 32_000 } as const;
 
@@ -30,6 +36,22 @@ const running = new Map<string, Running>();
 export const isRunning = (eventId: string): boolean => running.has(eventId);
 
 const hasText = (r: ApprovedResponse) => r.opinion.trim() !== '' || r.suggestion.trim() !== '';
+
+/**
+ * Keeps a verbose rewrite usable instead of failing the run: the schema no longer caps point count
+ * or point length, so trim both here, after parsing, one response at a time.
+ */
+function trimAnonymizeOutput(output: AnonymizeOutput): AnonymizeOutput {
+	return {
+		points: output.points
+			.slice(0, ANALYSIS.maxPointsPerResponse)
+			.map((p) =>
+				p.text.length > ANALYSIS.maxPointChars
+					? { ...p, text: p.text.slice(0, ANALYSIS.maxPointChars) }
+					: p
+			)
+	};
+}
 
 export function analysisStatus(db: DbLike, event: EventRow): AnalysisStatus {
 	const row = db
@@ -204,7 +226,7 @@ async function runJob(
 				'anonymize',
 				ANONYMIZE_SCHEMA,
 				MAX_TOKENS.anonymize,
-				(raw) => anonymizeOutput.parse(raw)
+				(raw) => trimAnonymizeOutput(anonymizeOutput.parse(raw))
 			);
 		} catch (e) {
 			// This call failed: stop the in-flight sibling calls through the shared signal.

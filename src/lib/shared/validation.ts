@@ -56,17 +56,26 @@ export const participantStatusInput = z.object({ status: z.enum(['approved', 're
 
 const providerKey = z.string().min(1, 'Enter a key').max(4096);
 
-export const modelsInput = z.object({
-	provider: z.enum(PROVIDER_IDS, 'Unknown provider'),
-	key: providerKey
-});
+/** The fake provider accepts any non-empty key; a real provider's key must at least look like one. */
+const looksLikeKey = (v: { provider: (typeof PROVIDER_IDS)[number]; key: string }) =>
+	v.provider === 'fake' || v.key.length >= 16;
+const keyLengthIssue = { message: 'That does not look like an API key', path: ['key'] };
 
-export const runAnalysisInput = z.object({
-	provider: z.enum(PROVIDER_IDS, 'Unknown provider'),
-	key: providerKey,
-	model: z.string().trim().min(1, 'Pick a model').max(200),
-	effort: z.enum(EFFORTS).default('max')
-});
+export const modelsInput = z
+	.object({
+		provider: z.enum(PROVIDER_IDS, 'Unknown provider'),
+		key: providerKey
+	})
+	.refine(looksLikeKey, keyLengthIssue);
+
+export const runAnalysisInput = z
+	.object({
+		provider: z.enum(PROVIDER_IDS, 'Unknown provider'),
+		key: providerKey,
+		model: z.string().trim().min(1, 'Pick a model').max(200),
+		effort: z.enum(EFFORTS).default('max')
+	})
+	.refine(looksLikeKey, keyLengthIssue);
 
 export type CreateEventInput = z.infer<typeof createEventInput>;
 export type ResponseInput = z.infer<typeof responseInput>;

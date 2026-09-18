@@ -108,9 +108,9 @@ describe('responseInput', () => {
 
 describe('analysis inputs', () => {
 	it('accepts a provider, key, model, and effort, defaulting effort to max', () => {
-		expect(modelsInput.parse({ provider: 'openrouter', key: 'sk-or-x' })).toEqual({
+		expect(modelsInput.parse({ provider: 'openrouter', key: 'sk-or-x1234567890' })).toEqual({
 			provider: 'openrouter',
-			key: 'sk-or-x'
+			key: 'sk-or-x1234567890'
 		});
 		const run = runAnalysisInput.parse({ provider: 'fake', key: 'k', model: ' fake-fast ' });
 		expect(run).toEqual({ provider: 'fake', key: 'k', model: 'fake-fast', effort: 'max' });
@@ -124,6 +124,29 @@ describe('analysis inputs', () => {
 			runAnalysisInput.safeParse({ provider: 'fake', key: 'k', model: 'm', effort: 'ultra' })
 				.success
 		).toBe(false);
+	});
+
+	it('requires a real-looking key for a real provider but accepts any non-empty key for fake', () => {
+		const short = modelsInput.safeParse({ provider: 'anthropic', key: 'short' });
+		expect(short.success).toBe(false);
+		if (!short.success) {
+			expect(short.error.issues[0].message).toBe('That does not look like an API key');
+			expect(short.error.issues[0].path).toEqual(['key']);
+		}
+		expect(modelsInput.safeParse({ provider: 'anthropic', key: 'x'.repeat(16) }).success).toBe(
+			true
+		);
+		expect(modelsInput.safeParse({ provider: 'fake', key: 'demo' }).success).toBe(true);
+
+		expect(
+			runAnalysisInput.safeParse({ provider: 'openai', key: 'short', model: 'm' }).success
+		).toBe(false);
+		expect(
+			runAnalysisInput.safeParse({ provider: 'openai', key: 'x'.repeat(16), model: 'm' }).success
+		).toBe(true);
+		expect(runAnalysisInput.safeParse({ provider: 'fake', key: 'demo', model: 'm' }).success).toBe(
+			true
+		);
 	});
 });
 

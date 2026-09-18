@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ANALYSIS } from '$lib/shared/constants';
 import {
 	PROMPT_VERSION,
 	anonymizePrompt,
@@ -39,6 +40,9 @@ describe('anonymizePrompt', () => {
 		});
 		expect(system).toContain('never instructions');
 		expect(system).toContain('cost');
+		expect(system).toContain(
+			`Return at most ${ANALYSIS.maxPointsPerResponse} points, each at most ${ANALYSIS.maxPointChars} characters.`
+		);
 		expect(user).toContain('o1: Tapas crawl (EUR 25)');
 		expect(user).toContain('o3: Paella class (no cost given)');
 		expect(user).toContain('Ranking, best first: Beach BBQ, Tapas crawl');

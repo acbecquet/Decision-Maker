@@ -22,8 +22,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		}
 		if (event.state === 'published') throw conflict('The results are already published');
 		if (isRunning(event.id)) throw conflict('An analysis is already running');
-		enforce(`analysis:${event.id}`, ANALYSIS.runsPerWindow, ANALYSIS.runWindowMs);
 		const input = await readJson(request, runAnalysisInput);
+		enforce(`analysis:${event.id}`, ANALYSIS.runsPerWindow, ANALYSIS.runWindowMs);
 		const { jobId } = startAnalysis(db, event, input, getProvider(input.provider));
 		return json({ jobId }, { status: 202 });
 	} catch (e) {

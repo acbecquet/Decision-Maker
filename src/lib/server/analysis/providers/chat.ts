@@ -3,6 +3,7 @@ import { ANALYSIS } from '$lib/shared/constants';
 import type { ThinkingEffort } from '$lib/shared/report';
 import {
 	ProviderError,
+	capUpstreamMessage,
 	parseJsonText,
 	redact,
 	type JsonRequest,
@@ -40,7 +41,10 @@ function mapError(e: unknown, key: string, name: string): ProviderError {
 	if (e instanceof OpenAI.APIError) {
 		const status = e.status ?? 0;
 		if (status === 402) return new ProviderError(`${name} reports insufficient credits`, false);
-		return new ProviderError(redact(`${name} error ${status}: ${e.message}`, key), status >= 500);
+		return new ProviderError(
+			redact(`${name} error ${status}: ${capUpstreamMessage(e.message)}`, key),
+			status >= 500
+		);
 	}
 	return new ProviderError(
 		redact(e instanceof Error ? e.message : 'Unknown provider error', key),

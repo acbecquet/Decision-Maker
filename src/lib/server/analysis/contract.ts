@@ -58,6 +58,11 @@ export function redact(message: string, key: string): string {
 	return key.length >= 8 ? message.split(key).join('[key]') : message;
 }
 
+/** Flattens whitespace and caps an upstream provider message before it is shown to a host. */
+export function capUpstreamMessage(message: string, max = 200): string {
+	return message.replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
 /** Moves the first preferred id that exists to the front; everything else keeps its order. */
 export function preferFirst(models: ModelInfo[], preferred: string[]): ModelInfo[] {
 	const hit = preferred.map((id) => models.find((m) => m.id === id)).find(Boolean);

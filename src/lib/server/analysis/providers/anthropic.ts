@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { ANALYSIS } from '$lib/shared/constants';
 import {
 	ProviderError,
+	capUpstreamMessage,
 	parseJsonText,
 	preferFirst,
 	redact,
@@ -44,7 +45,10 @@ function mapError(e: unknown, key: string): ProviderError {
 		return new ProviderError('Could not reach Anthropic', true);
 	if (e instanceof Anthropic.APIError) {
 		const status = e.status ?? 0;
-		return new ProviderError(redact(`Anthropic error ${status}: ${e.message}`, key), status >= 500);
+		return new ProviderError(
+			redact(`Anthropic error ${status}: ${capUpstreamMessage(e.message)}`, key),
+			status >= 500
+		);
 	}
 	return new ProviderError(
 		redact(e instanceof Error ? e.message : 'Unknown provider error', key),

@@ -46,7 +46,8 @@ export function buildReportView(db: Db, event: EventRow, request: Request): Repo
 	const host = isHost(event, request);
 	const participant = host ? undefined : participantFromRequest(db, event, request);
 	const approvedReader = event.state === 'published' && participant?.status === 'approved';
-	if (!report || !event.aggregates || !(host || approvedReader)) throw notFound('No report');
+	if (!report || report.version !== 1 || !event.aggregates || !(host || approvedReader))
+		throw notFound('No report');
 	return {
 		title: event.title,
 		context: event.context,

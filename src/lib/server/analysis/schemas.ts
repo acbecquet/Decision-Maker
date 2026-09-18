@@ -84,7 +84,7 @@ export const SYNTHESIZE_SCHEMA: JsonSchema = {
 	additionalProperties: false
 };
 
-/** Throws when any object in the schema tree is not strict. Used by tests and at startup. */
+/** Throws when any object in the schema tree is not strict. Used by tests. */
 export function assertStrict(schema: unknown, path = '$'): void {
 	if (!schema || typeof schema !== 'object') return;
 	const node = schema as Record<string, unknown>;
@@ -106,16 +106,18 @@ export function assertStrict(schema: unknown, path = '$'): void {
 
 const nonEmpty = z.string().trim().min(1);
 
+/**
+ * A verbose rewrite is trimmed, not fatal: the job caps the point count and point length after
+ * parsing (see `job.ts`), so this validator only enforces shape.
+ */
 export const anonymizeOutput = z.object({
-	points: z
-		.array(
-			z.object({
-				text: nonEmpty.max(600),
-				type: z.enum(POINT_TYPES),
-				optionIds: z.array(z.string())
-			})
-		)
-		.max(ANALYSIS.maxPointsPerResponse)
+	points: z.array(
+		z.object({
+			text: nonEmpty,
+			type: z.enum(POINT_TYPES),
+			optionIds: z.array(z.string())
+		})
+	)
 });
 
 export const synthesizeOutput = z.object({
