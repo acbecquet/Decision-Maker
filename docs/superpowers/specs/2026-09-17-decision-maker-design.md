@@ -408,9 +408,9 @@ Three layers of tests:
   One host context and many participant contexts act as separate devices and run the whole story: create with costs, submit, count-only while open, approve and reject, close, tallies appear and the roster locks, connect the fake provider, run, watch progress, read the draft, publish.
   Assertions: approved devices see the report, pending and rejected do not, raw rows are gone from the database, and no HTTP response during the entire run contained opinion text.
   Separate scenarios cover device lock, edit until close, suppression, auto-close with pending names, and magic-link sign-in through a test mail sink.
-  Screenshots are captured at each step for the pixel pass.
+  Screenshots are captured on failure in Phase 1; the step-by-step capture for the pixel pass is part of Phase 4.
 
-Lint, format, and type checks gate every commit.
+Lint, format, and type checks gate every commit through the CI run on every push; a local pre-commit hook is a Phase 4 item.
 GitHub Actions runs all three layers on every push using the fake provider.
 The e2e server sets `RATE_LIMIT_SCALE=10` so a full run cannot exhaust the per-IP rate limits; production leaves it unset.
 A manual live spot-check script exists for real keys and is allowed to be flaky.
@@ -421,11 +421,11 @@ The fake-provider suite is not.
 Each phase gets its own implementation plan, and the next phase does not start until the harness is green.
 
 1. Walking skeleton, deployed.
-   Schema and migrations, token roles, create event with costs, link screen, the participant form with the ranking widget and budget chips, device lock and edit until close, roster and approval, close with tallies and suppression, the fake-provider seam, the harness core scenario, and the Docker image running always-on on Fly with Litestream backups and basic rate limits from day one.
+   Schema and migrations, token roles, create event with costs and an optional auto-close time, link screen, the participant form with the ranking widget and budget chips, device lock and edit until close, roster and approval, close with tallies and suppression, the fake-provider seam, the harness core scenario, and the Docker image running always-on on Fly with Litestream backups and basic rate limits from day one.
 2. Analysis and report.
    The three adapters including OpenRouter connect, model picker, job runner with progress, the three stages with versioned prompts and schemas, draft, publish with purge, the report page with charts and the cost section, and copy summary.
 3. Accounts and lifecycle.
-   Magic-link sign-in, my events, claiming, auto-close, expiry sweep, delete, QR code, and share sheet.
+   Magic-link sign-in, my events, claiming, expiry sweep, delete, QR code, and share sheet.
 4. Polish and hardening.
    Pixel pass on real phones, PWA install manifest, content security policy, accessibility, a backup restore drill, and CI green across the board.
 

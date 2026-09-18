@@ -1562,8 +1562,6 @@ Create `src/lib/server/participants.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
-import { events } from './db/schema';
 import { listOptions, stopSubmissions } from './events';
 import {
 	approveAllPending,
@@ -1578,6 +1576,8 @@ import {
 } from './participants';
 import { readApprovedResponses } from './analysis/responses';
 import { makeDb, makeEvent, response } from './test-utils';
+import { eq } from 'drizzle-orm';
+import { events } from './db/schema';
 
 const device = (n: number) => n.toString(16).padStart(64, '0');
 
@@ -1653,6 +1653,27 @@ describe('submitResponse', () => {
 		expect(() =>
 			submitResponse(db, event, ids, device(1), response('Alex', [ids[0]]), { autoApprove: false })
 		).toThrow(/closed/);
+	});
+
+	it('refuses a submission or edit once the row is closed, even from a stale snapshot', () => {
+		const { db, event, ids } = setup();
+		const p = submitResponse(db, event, ids, device(1), response('Alex', [ids[0]]), {
+			autoApprove: false
+		});
+		stopSubmissions(db, event);
+		expect(() =>
+			submitResponse(db, event, ids, device(2), response('Sam', [ids[0]]), { autoApprove: false })
+		).toThrow(/closed/);
+		expect(() =>
+			updateResponse(db, event, ids, p, {
+				ranking: [ids[1]],
+				vetoes: [],
+				budget: null,
+				opinion: '',
+				suggestion: ''
+			})
+		).toThrow(/closed/);
+		expect(countSubmitted(db, event.id)).toBe(1);
 	});
 });
 
@@ -1820,6 +1841,7 @@ function responseColumns(input: EditResponseInput, nowIso: string) {
 	};
 }
 
+/** The open-state guard reads the live row, so a close that landed during body parsing is honoured. */
 export function submitResponse(
 	db: Db,
 	event: EventRow,
@@ -1828,7 +1850,7 @@ export function submitResponse(
 	input: ResponseInput,
 	opts: { autoApprove: boolean; now?: Date }
 ): ParticipantRow {
-	if (event.state !== 'open') throw conflict('Submissions are closed');
+	if (getEventById(db, event.id).state !== 'open') throw conflict('Submissions are closed');
 	const problem = checkOptionRefs(input.ranking, input.vetoes, optionIds);
 	if (problem) throw badRequest(problem);
 	if (findParticipantByDevice(db, event.id, deviceTokenHash)) {
@@ -1862,7 +1884,7 @@ export function updateResponse(
 	input: EditResponseInput,
 	now = new Date()
 ): void {
-	if (event.state !== 'open') throw conflict('Submissions are closed');
+	if (getEventById(db, event.id).state !== 'open') throw conflict('Submissions are closed');
 	const problem = checkOptionRefs(input.ranking, input.vetoes, optionIds);
 	if (problem) throw badRequest(problem);
 	db.update(responses)
@@ -1904,10 +1926,12 @@ export function listRoster(db: DbLike, eventId: string): RosterRow[] {
 	}
 	return rows.map((r) => ({
 		...r,
+		name: r.name,
 		duplicate: (seen.get(r.name.trim().toLowerCase()) ?? 0) > 1
 	}));
 }
 
+/** The roster-final guard reads the live row, so a stale caller snapshot cannot bypass it. */
 export function setParticipantStatus(
 	db: DbLike,
 	event: EventRow,
@@ -2734,6 +2758,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	response.headers.set('x-content-type-options', 'nosniff');
 	response.headers.set('referrer-policy', 'no-referrer');
 	response.headers.set('x-frame-options', 'DENY');
+	if (event.url.pathname.startsWith('/api/')) response.headers.set('cache-control', 'no-store');
 	return response;
 };
 ```
@@ -3461,13 +3486,13 @@ test.describe('roster and close API', () => {
 		const ids = await optionIds(request, code);
 		await submitApi(request, code, token(), { name: 'Ana', ranking: [ids[0]] });
 
-		const soon = new Date(Date.now() + 1500).toISOString();
+		const soon = new Date(Date.now() + 3000).toISOString();
 		const set = await request.patch(`/api/events/${code}`, {
 			headers: host,
 			data: { closesAt: soon }
 		});
 		expect(set.status()).toBe(200);
-		await new Promise((resolve) => setTimeout(resolve, 1700));
+		await new Promise((resolve) => setTimeout(resolve, 3200));
 
 		const view = (await viewApi(request, code, host)).body;
 		expect(view.event.state).toBe('closed');
@@ -5338,7 +5363,7 @@ test.describe('host', () => {
 		await expect(page.getByTestId(`over-${ids[2]}`)).toHaveText('over budget for 3');
 		await expect(page.getByTestId(`over-${ids[0]}`)).toHaveText('over budget for 3');
 		await expect(page.getByTestId(`over-${ids[1]}`)).toHaveCount(0);
-		await expect(page.getByText('6 of 6 set a limit.')).toBeVisible();
+		await expect(page.getByText('6 of 6 answered the budget question.')).toBeVisible();
 		await context.close();
 	});
 
@@ -5356,7 +5381,7 @@ test.describe('host', () => {
 			.getByRole('button', { name: /^Tapas crawl/ })
 			.click();
 		await page.getByRole('button', { name: 'Submit', exact: true }).click();
-		await expect(page.getByText('Your own response is in.')).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Thanks, Charlie' })).toBeVisible();
 		await expect(page.getByText('1 submitted')).toBeVisible();
 		await expect(
 			page.getByTestId('roster').getByRole('listitem').filter({ hasText: 'Charlie' })
@@ -5372,12 +5397,13 @@ test.describe('host', () => {
 		const code = await createEventApi(request, hostToken);
 		const ids = await optionIds(request, code);
 		await submitApi(request, code, token(), { name: 'Ana', ranking: [ids[0]] });
-		const soon = new Date(Date.now() + 1500).toISOString();
-		await request.patch(`/api/events/${code}`, {
+		const soon = new Date(Date.now() + 3000).toISOString();
+		const set = await request.patch(`/api/events/${code}`, {
 			headers: { 'x-host-token': hostToken },
 			data: { closesAt: soon }
 		});
-		await new Promise((resolve) => setTimeout(resolve, 1700));
+		expect(set.status()).toBe(200);
+		await new Promise((resolve) => setTimeout(resolve, 3200));
 
 		const { page, context } = await openAsHost(browser, code, hostToken);
 		await expect(page.getByText('Submissions closed automatically')).toBeVisible();
@@ -5642,7 +5668,9 @@ Create `src/lib/components/TalliesView.svelte`:
 	{#if breakdown.cost}
 		<h3>Cost</h3>
 		{#if breakdown.cost.answered !== null}
-			<p class="small muted">{breakdown.cost.answered} of {tallies.approvedCount} set a limit.</p>
+			<p class="small muted">
+				{breakdown.cost.answered} of {tallies.approvedCount} answered the budget question.
+			</p>
 		{/if}
 		{#each breakdown.cost.rows as c (c.optionId)}
 			<div class="bar">
@@ -5672,6 +5700,7 @@ Replace `src/lib/components/HostView.svelte` with:
 	import LinkCard from './LinkCard.svelte';
 	import ResponseForm from './ResponseForm.svelte';
 	import Roster from './Roster.svelte';
+	import SubmittedCard from './SubmittedCard.svelte';
 	import TalliesView from './TalliesView.svelte';
 
 	let {
@@ -5682,8 +5711,12 @@ Replace `src/lib/components/HostView.svelte` with:
 
 	const event = $derived(view.event);
 	const host = $derived(view.host);
+	const pendingNames = $derived(
+		host?.roster.filter((r) => r.status === 'pending').map((r) => r.name) ?? []
+	);
 	let error = $state('');
 	let showForm = $state(false);
+	let editingOwn = $state(false);
 	let closesLocal = $state(untrack(() => toLocal(view.event.closesAt)));
 	let closeDialog: ReturnType<typeof CloseDialog> | undefined = $state();
 
@@ -5694,10 +5727,6 @@ Replace `src/lib/components/HostView.svelte` with:
 		const pad = (n: number) => String(n).padStart(2, '0');
 		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 	}
-
-	const pendingNames = $derived(
-		host?.roster.filter((r) => r.status === 'pending').map((r) => r.name) ?? []
-	);
 
 	async function call(
 		path: string,
@@ -5711,6 +5740,11 @@ Replace `src/lib/components/HostView.svelte` with:
 			return true;
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Something went wrong, try again';
+			try {
+				await onchange();
+			} catch {
+				// The error above is what the host needs to see.
+			}
 			return false;
 		}
 	}
@@ -5748,8 +5782,23 @@ Replace `src/lib/components/HostView.svelte` with:
 {#if host && event.state === 'open'}
 	<LinkCard {code} />
 
-	{#if view.mine}
-		<p class="small muted">Your own response is in.</p>
+	{#if view.mine && editingOwn}
+		<h2>Your response</h2>
+		<ResponseForm
+			{event}
+			{code}
+			mine={view.mine}
+			oncancel={() => (editingOwn = false)}
+			onsubmitted={async () => {
+				try {
+					await onchange();
+				} finally {
+					editingOwn = false;
+				}
+			}}
+		/>
+	{:else if view.mine}
+		<SubmittedCard {event} mine={view.mine} onedit={() => (editingOwn = true)} />
 	{:else if showForm}
 		<h2>Your response</h2>
 		<ResponseForm
@@ -6024,13 +6073,17 @@ test('the whole Barcelona story through close, with the host never seeing a raw 
 }) => {
 	const host = await newDevice(browser);
 	const bodies: string[] = [];
-	host.page.on('response', async (res) => {
+	const pending: Promise<void>[] = [];
+	host.page.on('response', (res) => {
 		if (!res.url().includes('/api/')) return;
-		try {
-			bodies.push(await res.text());
-		} catch {
-			// A navigation can discard a body; nothing to record.
-		}
+		pending.push(
+			res.text().then(
+				(body) => {
+					bodies.push(body);
+				},
+				() => undefined
+			)
+		);
 	});
 
 	await host.page.goto('/');
@@ -6071,9 +6124,10 @@ test('the whole Barcelona story through close, with the host never seeing a raw 
 	await expect(
 		host.page.getByText('Tapas crawl beats every other option head to head.')
 	).toBeVisible();
-	await expect(host.page.getByText('5 of 5 set a limit.')).toBeVisible();
+	await expect(host.page.getByText('5 of 5 answered the budget question.')).toBeVisible();
 	await expect(host.page.getByText('over budget for 3')).toBeVisible();
 
+	await Promise.all(pending);
 	const everything = bodies.join('\n');
 	expect(everything).not.toContain('SENTINEL');
 	expect(everything).not.toContain('"ranking"');
@@ -6137,7 +6191,7 @@ test('four approved responses show no breakdown, and small cost counts stay hidd
 	await five.page.getByRole('button', { name: 'Approve pending and close' }).click();
 	await expect(five.page.getByText('5 approved responses')).toBeVisible();
 	await expect(five.page.getByTestId(`first-${ids2[0]}`)).toHaveText('5');
-	await expect(five.page.getByText('5 of 5 set a limit.')).toBeVisible();
+	await expect(five.page.getByText('5 of 5 answered the budget question.')).toBeVisible();
 	await expect(five.page.getByText('over budget')).toHaveCount(0);
 	await five.context.close();
 });
@@ -6233,7 +6287,7 @@ Create `deploy/litestream.yml`:
 
 ```yaml
 dbs:
-  - path: /data/app.db
+  - path: ${DATABASE_URL}
     replica:
       type: s3
       bucket: ${BUCKET_NAME}
@@ -6452,6 +6506,9 @@ on:
   push:
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   test:
