@@ -39,6 +39,7 @@ export function moveToken(from: string, to: string, role: TokenRole): void {
 	const token = getToken(from, role);
 	if (!token) return;
 	setToken(to, role, token);
+	if (getToken(to, role) !== token) return;
 	try {
 		localStorage.removeItem(key(from, role));
 	} catch {

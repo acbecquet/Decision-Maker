@@ -36,7 +36,11 @@
 	{:else if !view}
 		<p class="muted">Loading</p>
 	{:else if view.role === 'host' && page.url.searchParams.get('created')}
-		<LinkScreen {code} title={view.event.title} />
+		<LinkScreen
+			{code}
+			title={view.event.title}
+			canEdit={view.event.state === 'open' && view.host?.submittedCount === 0}
+		/>
 	{:else if view.role === 'host'}
 		<HostView {view} {code} onchange={load} />
 	{:else}

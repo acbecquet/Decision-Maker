@@ -17,6 +17,14 @@ class MemoryStorage {
 	}
 }
 
+/** Behaves like MemoryStorage, but fails to write the new key, as a full or blocked store might. */
+class FailsToWriteNewKeyStorage extends MemoryStorage {
+	setItem(key: string, value: string) {
+		if (key.includes(':new:')) throw new Error('storage unavailable');
+		super.setItem(key, value);
+	}
+}
+
 describe('token store', () => {
 	beforeEach(() => {
 		Object.defineProperty(globalThis, 'localStorage', {
@@ -52,5 +60,16 @@ describe('token store', () => {
 		expect(getToken('old', 'host')).toBeNull();
 		moveToken('none', 'other', 'host');
 		expect(getToken('other', 'host')).toBeNull();
+	});
+
+	it('moveToken keeps the old key when the write to the new key does not land', () => {
+		Object.defineProperty(globalThis, 'localStorage', {
+			value: new FailsToWriteNewKeyStorage(),
+			configurable: true
+		});
+		setToken('old', 'host', 'h'.repeat(64));
+		moveToken('old', 'new', 'host');
+		expect(getToken('old', 'host')).toBe('h'.repeat(64));
+		expect(getToken('new', 'host')).toBeNull();
 	});
 });

@@ -57,10 +57,20 @@ test.describe('creating an event', () => {
 		await page.goto('/');
 		await page.getByLabel('What are you deciding?').fill('Lunch');
 		await page.getByLabel('Option 1').fill('A');
+		await page.getByLabel('Note').nth(0).fill('Outdoor');
+		await page.getByLabel('Cost per person').nth(0).fill('12');
 		await page.getByLabel('Option 2').fill('B');
 		await page.getByRole('button', { name: 'Create event' }).click();
 		await expect(page).toHaveURL(/\?created=1$/);
 		const first = new URL(page.url()).pathname.split('/').pop() as string;
+
+		await page.getByRole('button', { name: 'Edit event' }).click();
+		await expect(page).toHaveURL(new RegExp(`/e/${first}/edit`));
+		await expect(page.getByLabel('Note').nth(0)).toHaveValue('Outdoor');
+		await expect(page.getByLabel('Cost per person').nth(0)).toHaveValue('12');
+		await page.getByRole('button', { name: 'Cancel' }).click();
+		await expect(page).toHaveURL(/\?created=1$/);
+		await expect(page.getByRole('heading', { name: 'Your event is ready' })).toBeVisible();
 
 		await page.getByRole('button', { name: 'Edit event' }).click();
 		await expect(page).toHaveURL(new RegExp(`/e/${first}/edit`));
@@ -80,6 +90,14 @@ test.describe('creating an event', () => {
 		await page.getByRole('button', { name: 'Continue to host view' }).click();
 		await expect(page.getByRole('heading', { name: 'Late lunch' })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Edit event' })).toBeVisible();
+
+		await page.getByRole('button', { name: 'Edit event' }).click();
+		await expect(page).toHaveURL(new RegExp(`/e/${second}/edit`));
+		await expect(page.getByLabel('Cost per person').nth(0)).toHaveValue('12');
+		await expect(page.getByLabel('Option 3')).toHaveValue('Cafe');
+		await page.getByRole('button', { name: 'Cancel' }).click();
+		await expect(page).toHaveURL(new RegExp(`/e/${second}$`));
+		await expect(page.getByRole('heading', { name: 'Late lunch' })).toBeVisible();
 
 		const old = await newDevice(browser);
 		await old.page.goto(`/e/${first}`);

@@ -3,16 +3,18 @@
 	import { resolve } from '$app/paths';
 	import LinkCard from './LinkCard.svelte';
 
-	let { code, title }: { code: string; title: string } = $props();
+	let { code, title, canEdit }: { code: string; title: string; canEdit: boolean } = $props();
 </script>
 
-<button
-	type="button"
-	class="link-btn"
-	onclick={() => goto(resolve('/e/[code]/edit?from=link', { code }))}
->
-	← Edit event
-</button>
+{#if canEdit}
+	<button
+		type="button"
+		class="link-btn"
+		onclick={() => goto(resolve('/e/[code]/edit?from=link', { code }))}
+	>
+		← Edit event
+	</button>
+{/if}
 <h1>Your event is ready</h1>
 <p class="muted">{title}</p>
 <LinkCard {code} />
