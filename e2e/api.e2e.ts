@@ -163,6 +163,41 @@ test.describe('events API', () => {
 		expect((await locked.json()).message).toMatch(/already submitted/);
 	});
 
+	test('deleting waits for a running analysis to finish', async ({ request }) => {
+		const hostToken = token();
+		const host = { 'x-host-token': hostToken };
+		const code = await createEventApi(request, hostToken);
+		const ids = await optionIds(request, code);
+		for (const name of ['Ana', 'Ben', 'Cleo']) {
+			expect(
+				(
+					await submitApi(request, code, token(), { name, ranking: [ids[0]], opinion: 'Thoughts.' })
+				).status()
+			).toBe(201);
+		}
+		await request.post(`/api/events/${code}/close`, {
+			headers: host,
+			data: { pending: 'approve' }
+		});
+		const started = await request.post(`/api/events/${code}/analysis`, {
+			headers: host,
+			data: { provider: 'fake', key: 'demo', model: 'fake-slow' }
+		});
+		expect(started.status()).toBe(202);
+		const blocked = await request.delete(`/api/events/${code}`, { headers: host });
+		expect(blocked.status()).toBe(409);
+		expect((await blocked.json()).message).toMatch(/still running/);
+		await expect
+			.poll(
+				async () =>
+					(await (await request.get(`/api/events/${code}/analysis`, { headers: host })).json())
+						.status,
+				{ timeout: 20_000 }
+			)
+			.not.toBe('running');
+		expect((await request.delete(`/api/events/${code}`, { headers: host })).status()).toBe(204);
+	});
+
 	test('the host can delete the event, after which the link is gone', async ({ request }) => {
 		const hostToken = token();
 		const code = await createEventApi(request, hostToken);
