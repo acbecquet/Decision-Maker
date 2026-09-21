@@ -81,8 +81,8 @@ The compose file now sets `name: decision-maker`, the deploy script refuses to r
 ### Task 5: Cutover on the hub
 
 - [x] `docker network create edge` (done 2026-09-21).
-- [ ] Clone the repo, write `deploy/.env.prod` from the local key file without printing it, run the deploy script, and confirm health inside the stack.
+- [x] Clone the repo, write `deploy/.env.prod` from the local key file without printing it, run the deploy script, and confirm health inside the stack (done 2026-09-21: `decision-maker-app-1` healthy, the alias answers on `edge` with the security headers, a create, view, and delete cycle through the alias with a forwarded address passed).
 - [ ] Charlie adds the DNS record; then pull Podium's Caddy change on the hub, `docker compose up -d caddy`, and reload Caddy once the record resolves.
 - [ ] Verify from outside: TLS, `/api/health` with the deployed commit, the security headers, a create and delete cycle, and a sign-in mail on the verified domain.
-- [ ] Install the snapshot cron line and run it once.
+- [x] Install the snapshot cron line and run it once (done 2026-09-21: first snapshot passed an integrity check).
 - [ ] Recover the Axis dinner event: once Fly access is restored with a card, copy `/data/app.db` off the volume, merge that event's rows into the hub database, and attach the event to Charlie's account after he signs in.
