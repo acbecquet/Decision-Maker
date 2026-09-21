@@ -81,6 +81,7 @@
 	}
 </script>
 
+<p class="small" style="margin:0 0 8px"><a href={resolve('/me')}>My events</a></p>
 <h1>{event.title}</h1>
 {#if event.context}
 	<p class="muted">{event.context}</p>

@@ -4,11 +4,13 @@
 	let {
 		roster,
 		readonly,
-		onstatus
+		onstatus,
+		showStatus = true
 	}: {
 		roster: RosterRow[];
 		readonly: boolean;
 		onstatus?: (id: string, status: 'approved' | 'rejected') => void;
+		showStatus?: boolean;
 	} = $props();
 
 	const labels = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' } as const;
@@ -26,11 +28,13 @@
 						<span class="pill pill-warn">Duplicate name</span>
 					{/if}
 				</span>
-				<span
-					class="pill"
-					class:pill-success={row.status === 'approved'}
-					class:pill-danger={row.status === 'rejected'}>{labels[row.status]}</span
-				>
+				{#if showStatus}
+					<span
+						class="pill"
+						class:pill-success={row.status === 'approved'}
+						class:pill-danger={row.status === 'rejected'}>{labels[row.status]}</span
+					>
+				{/if}
 				{#if !readonly && onstatus}
 					{#if row.status !== 'approved'}
 						<button

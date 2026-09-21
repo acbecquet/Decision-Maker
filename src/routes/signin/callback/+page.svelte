@@ -17,7 +17,7 @@
 				method: 'POST',
 				body: { token, hostTokens: allHostTokens() }
 			});
-			await goto(resolve('/me'), { replaceState: true });
+			await goto(resolve('/'), { replaceState: true });
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Something went wrong, try again';
 		} finally {

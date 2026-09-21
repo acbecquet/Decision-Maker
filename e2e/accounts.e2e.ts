@@ -25,7 +25,7 @@ test('a host signs in by magic link, sees the event on another device, and signs
 	const link = new URL((await mail.json()).url);
 	await phone.page.goto(link.pathname + link.search);
 	await phone.page.getByRole('button', { name: 'Finish signing in' }).click();
-	await expect(phone.page).toHaveURL(/\/me$/);
+	await expect(phone.page).toHaveURL(/\/$/);
 	await expect(phone.page.getByText(email)).toBeVisible();
 	const list = phone.page.getByTestId('my-events');
 	await expect(list.getByRole('listitem')).toHaveCount(1);
@@ -42,6 +42,7 @@ test('a host signs in by magic link, sees the event on another device, and signs
 
 	await phone.page.getByRole('button', { name: 'Sign out' }).click();
 	await expect(phone.page).toHaveURL(/\/$/);
+	await expect(phone.page.getByRole('heading', { name: 'DecisionMaker' })).toBeVisible();
 	await phone.page.goto('/me');
 	await expect(phone.page).toHaveURL(/\/signin$/);
 	await phone.context.close();
