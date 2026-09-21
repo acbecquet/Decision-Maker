@@ -23,7 +23,7 @@ A nightly cron snapshot of the database replaces Litestream, which had no bucket
 
 - Why the hub and not a paid Fly plan: Charlie's call on 2026-09-21; the trial's five-minute machine lifetime had already made analysis runs impossible.
 - Why Caddy and not the tunnel: TLS ends on Charlie's own VM, which keeps the privacy promise about provider keys, and it is the shape Podium already runs.
-- Why a shared `edge` network and an alias: both compose projects have a service named `app`, so Caddy proxies to the unambiguous alias `decision-maker` on a network only the two stacks share.
+- Why a shared `edge` network and a service named `decision-maker`: Compose registers every service name as a DNS alias on the networks it joins and Podium's own service is `app`, so this stack's service carries the unambiguous name Caddy proxies to, on a network only the two stacks share.
 - Why a cron snapshot and not Litestream: the snapshots are plain SQLite files anyone can open and restore, and a file replica on the same VM would add nothing over them.
 - Fly's config stays in the repo as the retired path.
 
@@ -56,7 +56,7 @@ The compose file now sets `name: decision-maker`, the deploy script refuses to r
 - Create: `deploy/.env.prod.example`
 - Modify: `.gitignore`
 
-- [x] The compose file builds `deploy/Dockerfile` with `GIT_COMMIT`, mounts the named volume `dm-data` at `/data` and `./backups` at `/backups`, sets the forwarded-address and safety env vars, joins the external network `edge` with the alias `decision-maker`, and has a Node-based health check.
+- [x] The compose file builds `deploy/Dockerfile` with `GIT_COMMIT`, mounts the named volume `dm-data` at `/data` and `./backups` at `/backups`, sets the forwarded-address and safety env vars, joins the external network `edge` as the service `decision-maker`, and has a Node-based health check.
 - [x] `deploy/deploy.sh` refuses to run without `deploy/.env.prod`, creates `edge` if missing, builds and starts the stack, and waits up to 90 seconds for `/api/health` to report the deployed commit, printing the app logs and exiting 1 otherwise.
 - [x] `deploy/backup.sh` snapshots the database through SQLite's backup API into `deploy/backups/` and deletes snapshots older than 14 days.
 - [x] `.gitignore` keeps `deploy/.env.prod.example` tracked and ignores `deploy/backups/` and `deploy/logs/`.
@@ -82,20 +82,24 @@ The compose file now sets `name: decision-maker`, the deploy script refuses to r
 
 The first review (652c4c0..5b5133f) and the fixes that followed changed the design in these ways; the code is the source of truth over the task text above.
 
-- The service is named `decision-maker`, not `app`, because Compose registers a service's name as a DNS alias on every network it joins; with `app` on `edge`, Podium's Caddy could have resolved its own `app:8098` upstream to this container. The alias block is gone since the service name now carries the name.
-- `/api/health` also reports `origin`, and the deploy script waits for both the commit and the `ORIGIN` from `deploy/.env.prod`, so a missing or wrong origin fails the deploy instead of surfacing as broken sign-in links; the script also refuses an `.env.prod` without `ORIGIN`, surfaces `docker compose config` errors, bounds the wait with a two-minute deadline, and passes `--remove-orphans` so a renamed service leaves no stale container behind.
+- The service is named `decision-maker`, not `app`, because Compose registers a service's name as a DNS alias on every network it joins.
+  With `app` on `edge`, Podium's Caddy could have resolved its own `app:8098` upstream to this container.
+  The alias block is gone since the service name now carries the name.
+- `/api/health` also reports `origin`, and the deploy script waits for both the commit and the `ORIGIN` from `deploy/.env.prod`, so a container that came up without the configured origin fails the deploy instead of surfacing as broken sign-in links; the script reads both the project name and the origin from `docker compose config`, the values the container actually gets, refuses a configuration without `ORIGIN`, surfaces `docker compose config` errors, bounds the wait with a two-minute deadline, and passes `--remove-orphans` so a renamed service leaves no stale container behind.
 - `backup.sh` opens each snapshot and runs `integrity_check` before reporting success, deleting the copy and exiting 1 otherwise, and prunes with `-mtime +13` so exactly the last 14 days are kept; the restore procedure checks the snapshot the same way first and was drilled on the hub.
 - The e2e server runs with `APP_COMMIT=e2e`, so the health assertion checks the stamped value and the origin rather than any string.
 - Podium's Caddy block also sets the sniff, frame, and referrer headers, because adapter-node serves static files outside the hook that sets them in the app.
 - The OpenRouter referer fallback and the spot-check scripts name the new origin.
 - The second review (5b5133f..57f9cf9) hardened `deploy/merge-event.mjs`: column lists come from `main.table_info` and are quoted, a different event already using the code is refused before anything is written, the copy runs in an immediate transaction and is verified row for row against the source before it commits, and the entry-point guard resolves symlinks; its test now reverses the source's `events` columns and compares every copied value by name, and the script header says the source must come from the backup API because a plain copy of a WAL database loses unflushed writes.
 - The restore drill showed that opening a snapshot leaves `-wal` and `-shm` sidecars beside it, so `backup.sh` switches each snapshot to rollback-journal mode and the prune covers sidecars; the project-name guard in `deploy.sh` now runs before any Docker side effect and reads the name with `awk`.
+- The final review (57f9cf9..ad1752e) moved the origin check onto the value Compose resolves, because parsing `.env.prod` by hand missed CRLF endings, single quotes, and inline comments that Compose strips; `backup.sh` writes under a `.part` name and renames only after the checks, so a killed run leaves nothing that looks like a snapshot; the merge script's clash check runs inside its transaction and its row-for-row verification now has a test that provokes a shortfall through a colliding participant id; the runbook gained the event-carry section.
+- Recorded and left alone from that review: one-off `docker compose run` containers carry no service alias, so the merge container cannot receive Caddy traffic; the test reverses only the `events` columns; snapshots taken before the journal-mode change stay in WAL mode (the one from before the cutover was removed).
 - Recorded and left alone: the compose health check only feeds `docker compose ps`; the backup log is not rotated (one line a night); `deploy/backups/` must stay writable by the cron user, which the deploy script ensures by creating it first; the Litestream binary stays in the image for the retired Fly path; the hub's public address in the runbook will rot and the runbook says how to re-derive it.
 
 ### Task 5: Cutover on the hub
 
 - [x] `docker network create edge` (done 2026-09-21).
-- [x] Clone the repo, write `deploy/.env.prod` from the local key file without printing it, run the deploy script, and confirm health inside the stack (done 2026-09-21: `decision-maker-app-1` healthy, the alias answers on `edge` with the security headers, a create, view, and delete cycle through the alias with a forwarded address passed).
+- [x] Clone the repo, write `deploy/.env.prod` from the local key file without printing it, run the deploy script, and confirm health inside the stack (done 2026-09-21: the app container healthy, the service name answers on `edge` with the security headers, a create, view, and delete cycle through the alias with a forwarded address passed).
 - [x] Charlie adds the DNS record; then pull Podium's Caddy change on the hub, `docker compose up -d caddy`, and reload Caddy once the record resolves (done 2026-09-21 18:13 UTC: the record resolved from three resolvers, Caddy was recreated once after confirming `app` no longer resolved on `edge`, and the certificate arrived within seconds).
 - [x] Verify from outside: TLS, `/api/health` with the deployed commit, the security headers, a create and delete cycle, and a sign-in mail on the verified domain (done 2026-09-21: Let's Encrypt certificate, commit and origin in health, HSTS plus the three app headers on a page and on a static file, HTTP redirecting to HTTPS, a create and delete cycle through the site inside the restore drill, and a sign-in request for a non-owner address accepted with 200 where the sandbox sender used to answer 502).
 - [x] Install the snapshot cron line and run it once (done 2026-09-21: first snapshot passed an integrity check).

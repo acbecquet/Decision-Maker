@@ -188,6 +188,36 @@ describe('mergeEvent', () => {
 		expect(counts(target).events).toBe(0);
 	});
 
+	it('rolls back and reports when a row of the event cannot be copied', () => {
+		const src = open(source);
+		const wanted = seed(src.db, 'Axis dinner', ['Ana']);
+		src.close();
+		const dst = open(target);
+		const own = seed(dst.db, 'Already on the hub', ['Eve']);
+		dst.close();
+		// Give the target's own event a participant whose id collides with Ana's, so that
+		// insert or ignore skips her silently and the copy comes up one row short.
+		const srcRaw = new Database(source, { readonly: true });
+		const ana = srcRaw.prepare('select id from participants').get() as { id: string };
+		srcRaw.close();
+		const raw = new Database(target);
+		const ownId = (raw.prepare('select id from events where code = ?').get(own) as { id: string })
+			.id;
+		raw
+			.prepare(
+				'insert into participants (id, event_id, display_name, device_token_hash, status, created_at) values (?, ?, ?, ?, ?, ?)'
+			)
+			.run(ana.id, ownId, 'Zed', 'f'.repeat(64), 'approved', '2026-09-21T00:00:00.000Z');
+		raw.close();
+		const before = counts(target);
+
+		expect(() => mergeEvent(target, source, wanted)).toThrow(
+			/participants: the target holds 0 rows for the event, the source 1/
+		);
+		expect(eventRows(target, wanted)).toEqual({});
+		expect(counts(target)).toEqual(before);
+	});
+
 	it('refuses to merge over a different event that already uses the code', () => {
 		const dst = open(target);
 		const taken = seed(dst.db, 'Already on the hub', ['Eve']);

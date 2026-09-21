@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # One-shot deploy on the hub, from the repo root: builds the image from the
 # checked-out commit, bakes that commit into /api/health, starts the stack, and
-# waits until the running app answers with the same commit and the configured
-# origin. Safe to re-run. Needs Docker with the compose plugin and
-# deploy/.env.prod (see .env.prod.example).
+# waits until the running app answers with the same commit and the origin
+# Compose hands the container. Safe to re-run. Needs Docker with the compose
+# plugin and deploy/.env.prod (see .env.prod.example).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -11,26 +11,30 @@ if [ ! -f deploy/.env.prod ]; then
 	echo "ERROR: deploy/.env.prod is missing. Copy deploy/.env.prod.example and fill it in." >&2
 	exit 1
 fi
-ORIGIN=$(sed -n 's/^ORIGIN=//p' deploy/.env.prod | tr -d '"' | head -1)
-if [ -z "$ORIGIN" ]; then
-	echo "ERROR: deploy/.env.prod has no ORIGIN; sign-in links and the OpenRouter callback are built from it." >&2
-	exit 1
-fi
 
 CO="docker compose -f deploy/docker-compose.yml"
 
-# Podium Chasers' stack on the same VM is the compose project "deploy" (named
-# after its directory); a DecisionMaker project with any name but its own would
-# replace Podium's containers, which happened once on 2026-09-21. This check
-# runs before anything else touches Docker.
+# Everything below reads the configuration exactly as Compose resolves it, so
+# the values checked are the values the container gets. This runs before
+# anything else touches Docker.
 if ! CONFIG=$($CO config 2>&1); then
 	echo "ERROR: docker compose config failed:" >&2
 	echo "$CONFIG" >&2
 	exit 1
 fi
-PROJECT=$(printf '%s\n' "$CONFIG" | awk '/^name: /{print $2; exit}')
+
+# Podium Chasers' stack on the same VM is the compose project "deploy" (named
+# after its directory); a DecisionMaker project with any name but its own would
+# replace Podium's containers, which happened once on 2026-09-21.
+PROJECT=$(printf '%s\n' "$CONFIG" | awk '/^name: /{v=$2} END{print v}')
 if [ "$PROJECT" != "decision-maker" ]; then
 	echo "ERROR: the compose project resolves to '${PROJECT}', not decision-maker; refusing to touch another stack." >&2
+	exit 1
+fi
+
+ORIGIN=$(printf '%s\n' "$CONFIG" | awk '/^ *ORIGIN: /{v=$2; gsub(/["'"'"']/, "", v)} END{print v}')
+if [ -z "$ORIGIN" ]; then
+	echo "ERROR: deploy/.env.prod sets no ORIGIN; sign-in links and the OpenRouter callback are built from it." >&2
 	exit 1
 fi
 
@@ -58,6 +62,6 @@ while [ "$SECONDS" -lt "$DEADLINE" ]; do
 done
 
 # A deploy whose app never answered is a failed deploy and must say so.
-echo "ERROR: the app did not report '${WANT}' within two minutes (last answer: ${LIVE}). Recent logs:" >&2
+echo "ERROR: the app did not report '${WANT}' within two minutes (last answer: '${LIVE}'). Recent logs:" >&2
 $CO logs --no-log-prefix --tail=40 decision-maker >&2 || true
 exit 1

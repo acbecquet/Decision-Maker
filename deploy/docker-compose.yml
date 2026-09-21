@@ -1,6 +1,6 @@
 # DecisionMaker production stack on the hub VM. The app joins the shared `edge`
 # network, where Podium Chasers' Caddy terminates TLS and proxies
-# decide.acb-apps.com to the alias below. Run from the repo root:
+# decide.acb-apps.com to the service below. Run from the repo root:
 #   bash deploy/deploy.sh
 #
 # The project name is explicit because Compose would otherwise derive it from

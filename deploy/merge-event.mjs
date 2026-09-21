@@ -46,10 +46,6 @@ export function mergeEvent(targetPath, sourcePath, code) {
 		db.prepare('attach database ? as src').run(sourcePath);
 		const event = db.prepare('select id, title from src.events where code = ?').get(code);
 		if (!event) throw new Error(`no event with code ${code} in ${sourcePath}`);
-		const clash = db
-			.prepare('select id from main.events where code = ? and id <> ?')
-			.get(code, event.id);
-		if (clash) throw new Error(`the target already holds a different event with code ${code}`);
 
 		// Column lists come from the target, by name, so the copy never depends on column order.
 		const columns = (table) =>
@@ -65,6 +61,10 @@ export function mergeEvent(targetPath, sourcePath, code) {
 				.get(event.id).n;
 
 		const copy = db.transaction(() => {
+			const clash = db
+				.prepare('select id from main.events where code = ? and id <> ?')
+				.get(code, event.id);
+			if (clash) throw new Error(`the target already holds a different event with code ${code}`);
 			const copied = {};
 			for (const [table, where] of Object.entries(TABLES)) {
 				const cols = columns(table);
@@ -99,7 +99,7 @@ function invokedDirectly() {
 	try {
 		entry = realpathSync(entry);
 	} catch {
-		// Not a real file (node -e, node -): then this module was not the entry point.
+		// Not a real file (node -e, node -): the raw value can never equal this module's path.
 	}
 	return fileURLToPath(import.meta.url) === entry;
 }

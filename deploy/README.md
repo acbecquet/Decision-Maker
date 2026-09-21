@@ -77,6 +77,19 @@ $CO start decision-maker
 
 This was drilled on 2026-09-21: an event created, snapshotted, deleted, and restored came back intact.
 
+## Carrying an event in from another database
+
+`deploy/merge-event.mjs` copies one event, with its options, participants, and responses, from another DecisionMaker database into the live one, skipping rows that already exist and refusing to leave a partial copy behind.
+The source must be a copy made through SQLite's backup API, like the snapshots above, or a file whose `-wal` sidecar came with it; a plain copy of a live database loses the writes still in its write-ahead log.
+Put the source under `deploy/backups/`, run the merge from the repo root, check the counts it prints, and remove the source afterwards, since it holds every event of the other deployment:
+
+```sh
+docker compose -f deploy/docker-compose.yml run --rm --no-deps -v "$PWD/deploy/merge-event.mjs:/app/deploy/merge-event.mjs:ro" decision-maker node deploy/merge-event.mjs /backups/<source>.db /data/app.db <event code>
+rm deploy/backups/<source>.db
+```
+
+Attaching the event to an account afterwards is one update of `events.account_id` for the event's code.
+
 ## Client addresses
 
 Caddy appends the real client address to `X-Forwarded-For`; the app reads exactly that last entry (`ADDRESS_HEADER=X-Forwarded-For`, `XFF_DEPTH=1`), so a client cannot spoof its way past the rate limits.
