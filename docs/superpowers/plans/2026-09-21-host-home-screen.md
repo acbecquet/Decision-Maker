@@ -521,3 +521,13 @@ Expected: all green.
 git add src/lib/components/CreateEvent.svelte src/lib/components/HomeScreen.svelte src/lib/components/Roster.svelte src/lib/components/HostView.svelte src/routes/+page.server.ts src/routes/+page.svelte src/routes/new/+page.svelte src/routes/me/+page.svelte src/routes/signin/callback/+page.svelte e2e/home.e2e.ts e2e/accounts.e2e.ts
 git commit -m "Give a signed-in host a home screen that decides on names across events"
 ```
+
+## Deviations after review
+
+The task reviews changed the code in these ways, and the code is the source of truth over the steps above.
+
+- The Task 1 test pins the duplicate flag across statuses: a pending `Ana` next to an approved `ana`, so a pending-only query could not slip in unnoticed.
+- `refresh()` in the home screen clears the error on success, drops any response older than the newest request, and does nothing once the screen is unmounting or signing out, so a background tick can neither paint a stale list over a fresh decision nor redirect to sign-in in the middle of signing out.
+- The home page sends `cache-control: private, no-store`, since its HTML differs by session.
+- The card title takes the link colour so it reads as the way into the event.
+- Recorded and left alone: the home screen renders "Loading" on the server before its first fetch; errors show at the top of the page rather than beside the control; a decision has no busy state (the endpoints are idempotent); every card's pending list shares the `roster` test id and tests scope by card; `AccountEvent.rosterFinal` is carried but not read.

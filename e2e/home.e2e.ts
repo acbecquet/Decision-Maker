@@ -58,6 +58,7 @@ test('a signed-in host decides on names across events from the home screen', asy
 	await brunchCard.getByRole('button', { name: 'Approve all pending (3)' }).click();
 	await expect(phone.page.getByTestId('pending-total')).toHaveCount(0);
 	await expect(brunchCard).not.toContainText('pending');
+	await expect(brunchCard).toContainText('3 submitted');
 
 	await dinnerCard.getByRole('link', { name: 'Axis dinner' }).click();
 	await expect(phone.page).toHaveURL(new RegExp(`/e/${dinner}$`));

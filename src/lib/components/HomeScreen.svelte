@@ -25,12 +25,21 @@
 		published: 'Published'
 	};
 
+	/** Set once the screen is going away or signing out, so no late tick repaints or redirects. */
+	let stopped = false;
+	/** The newest refresh wins: a response to an older request is dropped, never painted over a newer one. */
+	let latest = 0;
+
 	async function refresh() {
+		const seq = ++latest;
 		try {
 			const me = await api<{ email: string; events: AccountEvent[] }>('/api/me');
+			if (seq !== latest || stopped) return;
 			email = me.email;
 			rows = me.events;
+			error = '';
 		} catch (err) {
+			if (seq !== latest || stopped) return;
 			if (err instanceof ApiError && err.status === 401) await goto(resolve('/signin'));
 			else if (rows === null)
 				error = 'Could not load your events. Check your connection and try again.';
@@ -41,11 +50,12 @@
 	onMount(() => {
 		void refresh();
 		const tick = () => {
-			if (document.visibilityState === 'visible') void refresh();
+			if (!stopped && document.visibilityState === 'visible') void refresh();
 		};
 		const timer = setInterval(tick, REFRESH_MS);
 		document.addEventListener('visibilitychange', tick);
 		return () => {
+			stopped = true;
 			clearInterval(timer);
 			document.removeEventListener('visibilitychange', tick);
 		};
@@ -70,10 +80,12 @@
 	const approveAll = (code: string) => act(code, `/api/events/${code}/roster/approve-all`);
 
 	async function signOut() {
+		stopped = true;
 		try {
 			await api('/api/auth/signout', { method: 'POST' });
 			await goto(resolve('/'), { invalidateAll: true });
 		} catch (err) {
+			stopped = false;
 			error =
 				err instanceof ApiError
 					? err.message
@@ -107,10 +119,7 @@
 		<ul style="list-style:none;padding:0;margin:0" data-testid="my-events">
 			{#each rows as row (row.code)}
 				<li class="card" style="margin:8px 0" data-testid={`event-${row.code}`}>
-					<a
-						href={resolve('/e/[code]', { code: row.code })}
-						style="text-decoration:none;color:inherit"
-					>
+					<a href={resolve('/e/[code]', { code: row.code })} style="text-decoration:none">
 						<strong>{row.title}</strong>
 					</a>
 					<p style="margin:6px 0 0">
