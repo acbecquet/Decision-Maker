@@ -63,7 +63,7 @@ The page surface is small:
 
 - `/` is the home page: the create form for a visitor who is not signed in, and the host home screen of section 6.7 for a signed-in host.
 - `/new` is the create form for a signed-in host.
-- `/e/{code}` is the single event link for everyone.
+- `/e/{code}` is the single event link for everyone; the shared form of the link carries the event name as an optional extra segment, `/e/{code}/{title-as-slug}`, which the server ignores (section 6.8).
 - `/signin` handles the magic link request and callback.
 - `/me` is the host home screen as well, kept so older links and the "My events" link on an event page keep working; it sends a visitor who is not signed in to `/signin`.
 - `/auth/openrouter/callback` receives the OpenRouter OAuth code.
@@ -179,6 +179,14 @@ Approving or rejecting from the home screen uses the same endpoints as the event
 The home screen refreshes itself every 15 seconds while it is visible, so new requests appear without a reload, and again as soon as it becomes visible.
 Closing, analysis, publishing, and deleting stay on the event page.
 "New event" opens the create form at `/new`; the host view of every event carries a "My events" link back to the home screen at the top.
+
+### 6.8 The link carries the event name (added 2026-09-21)
+
+The link the host shares reads `/e/{code}/{slug}`, where the slug is the title lowercased, stripped of accents, with runs of anything but letters and digits collapsed to single hyphens, trimmed, and cut at 60 characters; a title that leaves nothing behind gives a link without the segment.
+The code alone still identifies the event: `/e/{code}` keeps working forever, every internal navigation uses it, nothing redirects, and a wrong or stale slug is ignored, so a link shared before this change is not affected.
+The event page is served with the title in its HTML, as the document title and as the Open Graph title and canonical URL, so a messenger that unfurls the link on a phone shows what the decision is about before the page's scripts run.
+That is the title alone, with no description line and no image; a code that matches no event carries no such metadata.
+The page still decides who the visitor is on the client, from the tokens in browser storage, exactly as before.
 
 ## 7. Participant experience
 
