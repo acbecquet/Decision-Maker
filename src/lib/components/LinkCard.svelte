@@ -7,6 +7,8 @@
 
 	const slug = $derived(slugify(title));
 	const url = $derived(`${location.origin}/e/${code}${slug ? `/${slug}` : ''}`);
+	// The QR code carries the bare link: fewer modules scan more easily, and it lands on the same page.
+	const bare = $derived(`${location.origin}/e/${code}`);
 	let input: HTMLInputElement | undefined = $state();
 	let status = $state<'idle' | 'copied' | 'failed'>('idle');
 	let shareFailed = $state(false);
@@ -15,7 +17,7 @@
 
 	onMount(async () => {
 		try {
-			svg = await qrSvg(url);
+			svg = await qrSvg(bare);
 		} catch (err) {
 			// The QR code is a convenience; without it the link and the copy button still work.
 			console.error('QR code failed', err instanceof Error ? err.message : err);

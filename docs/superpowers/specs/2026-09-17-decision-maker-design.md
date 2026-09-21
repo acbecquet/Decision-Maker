@@ -184,6 +184,7 @@ Closing, analysis, publishing, and deleting stay on the event page.
 
 The link the host shares reads `/e/{code}/{slug}`, where the slug is the title lowercased, stripped of accents, with runs of anything but letters and digits collapsed to single hyphens, trimmed, and cut at 60 characters; a title that leaves nothing behind gives a link without the segment.
 The code alone still identifies the event: `/e/{code}` keeps working forever, every internal navigation uses it, nothing redirects, and a wrong or stale slug is ignored, so a link shared before this change is not affected.
+The QR code encodes the bare `/e/{code}` link, which scans more easily and lands on the same page.
 The event page is served with the title in its HTML, as the document title and as the Open Graph title and canonical URL, so a messenger that unfurls the link on a phone shows what the decision is about before the page's scripts run.
 That is the title alone, with no description line and no image; a code that matches no event carries no such metadata.
 The page still decides who the visitor is on the client, from the tokens in browser storage, exactly as before.
