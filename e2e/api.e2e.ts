@@ -3,6 +3,12 @@ import Database from 'better-sqlite3';
 import { createEventApi, optionIds, submitApi, token, viewApi } from './helpers';
 
 test.describe('events API', () => {
+	test('health answers with the build it serves', async ({ request }) => {
+		const res = await request.get('/api/health');
+		expect(res.status()).toBe(200);
+		expect(await res.json()).toEqual({ ok: true, commit: expect.any(String) });
+	});
+
 	test('creates an event and resolves roles from tokens', async ({ request }) => {
 		const hostToken = token();
 		const code = await createEventApi(request, hostToken);

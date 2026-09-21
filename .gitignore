@@ -17,6 +17,7 @@ Thumbs.db
 .env.*
 !.env.example
 !.env.test
+!.env.prod.example
 
 # Vite
 vite.config.js.timestamp-*
@@ -28,6 +29,8 @@ test-results
 
 # DecisionMaker
 data/
+deploy/backups/
+deploy/logs/
 e2e/.tmp/
 .superpowers/
 playwright-report/

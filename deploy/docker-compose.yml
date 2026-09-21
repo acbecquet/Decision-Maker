@@ -1,0 +1,52 @@
+# DecisionMaker production stack on the hub VM. The app joins the shared `edge`
+# network, where Podium Chasers' Caddy terminates TLS and proxies
+# decide.acb-apps.com to the alias below. Run from the repo root:
+#   bash deploy/deploy.sh
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    image: decision-maker:latest
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      HOST: '0.0.0.0'
+      PORT: '3000'
+      DATABASE_URL: /data/app.db
+      # Caddy appends the real client address last; the app reads exactly that one.
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: '1'
+      BODY_SIZE_LIMIT: 128K
+      ALLOW_FAKE_PROVIDER: '0'
+      ALLOW_MAIL_SINK: '0'
+    volumes:
+      - dm-data:/data
+      # Nightly snapshots from deploy/backup.sh land here, on the host.
+      - ./backups:/backups
+    networks:
+      edge:
+        aliases:
+          - decision-maker
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  dm-data:
+
+networks:
+  edge:
+    external: true

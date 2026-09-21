@@ -1,7 +1,7 @@
 # DecisionMaker design spec
 
 Date: 2026-09-17
-Status: approved; Phase 1 deployed on 2026-09-18, later phases in progress
+Status: approved; Phases 1 to 4 live; hosting moved from Fly.io to the hub VM on 2026-09-21 (see section 4)
 Repository: https://github.com/acbecquet/Decision-Maker
 
 ## 1. The problem
@@ -49,14 +49,15 @@ Out of scope for this project:
 | Write-ins          | Participants may suggest an option as text. Suggestions feed the analysis but are not added to the ranking list.                                                                                 |
 | Close              | Closing submissions is final. There is no reopen.                                                                                                                                                |
 | Architecture       | SvelteKit with TypeScript, SQLite through Drizzle, one Node process, one Docker image.                                                                                                           |
-| Hosting            | Fly.io, one always-on machine, persistent volume, Litestream backups to object storage.                                                                                                          |
+| Hosting            | Since 2026-09-21 the hub VM behind Podium Chasers' Caddy, one Docker Compose stack, a named volume, nightly snapshots; Fly.io with Litestream was the original target and is retired.            |
 
 ## 4. System overview
 
 One SvelteKit application serves both the pages and the JSON API from a single Node process.
 All state lives in one SQLite file on a persistent volume.
-The application ships as one Docker image and runs on one always-on Fly machine.
-Litestream runs inside the same container and continuously replicates the database file to an S3-compatible bucket.
+The application ships as one Docker image.
+Until 2026-09-21 it ran on one always-on Fly machine with Litestream replicating the database file to an S3-compatible bucket; the Fly trial ended before a bucket could be created.
+Since then it runs as one Docker Compose stack on the hub VM at https://decide.acb-apps.com, behind the Caddy container that Podium Chasers already runs, with a nightly snapshot of the database in place of Litestream (`deploy/README.md`).
 
 The page surface is small:
 
@@ -70,7 +71,7 @@ The analysis job runs inside the same process, one job per event at a time.
 The host view polls a progress endpoint.
 There is no queue service and no separate worker.
 
-External dependencies are exactly three: the model provider the host connects, a transactional email service for magic links, and object storage for Litestream backups.
+External dependencies are exactly two since the move: the model provider the host connects and a transactional email service for magic links.
 
 ## 5. Roles and tokens
 
@@ -439,9 +440,9 @@ Each phase gets its own implementation plan, and the next phase does not start u
 
 ## 17. Assumptions and things the host must provide
 
-- A Fly.io account and app, an S3-compatible bucket for Litestream (Tigris on Fly or Cloudflare R2), and a Resend or Postmark account for magic links.
-  The phase plans include the setup steps.
-- The app is served from a Fly-provided domain until a custom domain is chosen.
+- The hub VM with Docker, the DNS record for decide.acb-apps.com in Cloudflare, and a Resend account with acb-apps.com verified for magic links (originally a Fly.io app with a Litestream bucket; the Fly trial ended on 2026-09-21).
+  `deploy/README.md` has the setup steps.
+- The app is served at https://decide.acb-apps.com.
 - The operator's own OpenRouter key is used only by the manual live spot-check script and is never configured on the server.
 - Analysis cost is paid by the host through their own provider account.
   A thirty-person event costs cents on a mid-tier model and well under a dollar on a flagship.

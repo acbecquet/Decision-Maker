@@ -23,6 +23,7 @@ COPY --from=build /app/drizzle ./drizzle
 COPY deploy/litestream.yml /etc/litestream.yml
 COPY deploy/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh && mkdir -p /data
-ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0 DATABASE_URL=/data/app.db
+ARG GIT_COMMIT=unknown
+ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0 DATABASE_URL=/data/app.db APP_COMMIT=$GIT_COMMIT
 EXPOSE 3000
 CMD ["/entrypoint.sh"]

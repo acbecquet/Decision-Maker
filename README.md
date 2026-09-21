@@ -34,13 +34,12 @@ Migrations run automatically when the server starts.
 
 ## Deploy
 
-The app runs on Fly.io as one always-on machine with a volume at `/data` and Litestream replicating the database to a Tigris bucket.
+The app runs at https://decide.acb-apps.com on the hub VM, as one Docker Compose stack behind Podium Chasers' Caddy.
+`deploy/README.md` is the runbook: setup, deploy, DNS, verification, backups, and restore.
 
 ```sh
-fly deploy
-fly logs
-fly ssh console -C "litestream snapshots -config /etc/litestream.yml /data/app.db"
+ssh f1w-hub 'cd ~/decision-maker && git pull --ff-only && bash deploy/deploy.sh'
+curl -s https://decide.acb-apps.com/api/health
 ```
 
-Secrets for the bucket are set by `fly storage create` and never committed.
-The app name, region, and public origin live in `fly.toml`.
+`fly.toml` is the retired Fly.io deployment, kept in case a managed host is needed again.
