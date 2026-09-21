@@ -1,25 +1,18 @@
-import { and, count, desc, eq, isNull, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, lte, sql } from 'drizzle-orm';
 import { isTokenShape, newId, safeEqualHex, sha256Hex } from './crypto';
 import type { DbLike } from './db';
-import { accounts, events, magicLinks, participants, sessions } from './db/schema';
+import { accounts, events, magicLinks, sessions } from './db/schema';
 import { badRequest } from './errors';
 import { addDays } from './events';
 import { normalizeEmail } from './mail';
-import type { EventState } from '$lib/shared/types';
+import { listRoster } from './participants';
+import type { AccountEvent, ParticipantStatus } from '$lib/shared/types';
 import { randomBytes } from 'node:crypto';
 
 export const MAGIC_LINK_TTL_MS = 15 * 60_000;
 export const SESSION_TTL_DAYS = 90;
 export const SESSION_COOKIE = 'dm_session';
 export const SIGNIN_COOKIE = 'dm_signin';
-
-export type AccountEvent = {
-	code: string;
-	title: string;
-	state: EventState;
-	submittedCount: number;
-	createdAt: string;
-};
 
 const newSecret = () => randomBytes(32).toString('hex');
 
@@ -139,18 +132,33 @@ export function claimEvents(db: DbLike, accountId: string, hostTokens: string[])
 	return claimed;
 }
 
-/** The account's events, newest first, with how many people have submitted. */
+/**
+ * The account's events, open ones first and newest first within each group, with the counts
+ * and the pending names a host decides on from the home screen.
+ */
 export function listAccountEvents(db: DbLike, accountId: string): AccountEvent[] {
-	return db
+	const rows = db
 		.select({
+			id: events.id,
 			code: events.code,
 			title: events.title,
 			state: events.state,
-			submittedCount: sql<number>`(${db.select({ n: count() }).from(participants).where(eq(participants.eventId, events.id))})`,
+			rosterFinal: events.rosterFinal,
 			createdAt: events.createdAt
 		})
 		.from(events)
 		.where(eq(events.accountId, accountId))
-		.orderBy(desc(events.createdAt))
+		.orderBy(sql`case when ${events.state} = 'open' then 0 else 1 end`, desc(events.createdAt))
 		.all();
+	return rows.map(({ id, ...row }) => {
+		const roster = listRoster(db, id);
+		const withStatus = (status: ParticipantStatus) => roster.filter((r) => r.status === status);
+		return {
+			...row,
+			submittedCount: roster.length,
+			pendingCount: withStatus('pending').length,
+			approvedCount: withStatus('approved').length,
+			pending: withStatus('pending')
+		};
+	});
 }

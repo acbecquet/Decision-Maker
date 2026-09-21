@@ -11,7 +11,7 @@ import {
 } from './auth';
 import { sha256Hex } from './crypto';
 import { accounts, events, magicLinks, sessions } from './db/schema';
-import { getEventById, listOptions } from './events';
+import { createEvent, getEventById, listOptions, stopSubmissions } from './events';
 import { submitResponse } from './participants';
 import { HOST_HASH, makeDb, makeEvent, response } from './test-utils';
 
@@ -144,7 +144,7 @@ describe('claiming and listing events', () => {
 		expect(claimEvents(db, accountId, [hostToken])).toBe(0);
 
 		const ids = listOptions(db, mine.id).map((o) => o.id);
-		submitResponse(db, mine, ids, 'e'.repeat(64), response('Ana', [ids[0]]), {
+		const ana = submitResponse(db, mine, ids, 'e'.repeat(64), response('Ana', [ids[0]]), {
 			autoApprove: false
 		});
 		const owned = makeEvent(db, { title: 'Owned' });
@@ -157,14 +157,22 @@ describe('claiming and listing events', () => {
 				code: owned.code,
 				title: 'Owned',
 				state: 'open',
+				rosterFinal: false,
 				submittedCount: 0,
+				pendingCount: 0,
+				approvedCount: 0,
+				pending: [],
 				createdAt: '2026-09-18T12:00:00.000Z'
 			},
 			{
 				code: mine.code,
 				title: 'Mine',
 				state: 'open',
+				rosterFinal: false,
 				submittedCount: 1,
+				pendingCount: 1,
+				approvedCount: 0,
+				pending: [{ id: ana.id, name: 'Ana', status: 'pending', duplicate: false }],
 				createdAt: '2026-09-18T11:00:00.000Z'
 			}
 		]);
@@ -186,5 +194,76 @@ describe('claiming and listing events', () => {
 		expect(claimEvents(db, a.accountId, [hostToken])).toBe(1);
 		expect(claimEvents(db, b.accountId, [hostToken])).toBe(0);
 		expect(getEventById(db, event.id).accountId).toBe(a.accountId);
+	});
+
+	it('lists open events first with the counts and the pending names a host decides on', () => {
+		const db = makeDb();
+		const link = createMagicLink(db, 'a@b.co', t0);
+		const { accountId } = redeemMagicLink(db, link.token, link.nonce, t0);
+		const input = {
+			title: 'Saturday night',
+			context: '',
+			currency: 'EUR' as const,
+			options: [
+				{ label: 'Tapas', note: '', cost: 25 },
+				{ label: 'Beach', note: '', cost: null }
+			],
+			closesAt: null
+		};
+		const older = createEvent(
+			db,
+			input,
+			'a'.repeat(64),
+			accountId,
+			new Date('2026-09-20T10:00:00.000Z')
+		);
+		const closed = createEvent(
+			db,
+			input,
+			'b'.repeat(64),
+			accountId,
+			new Date('2026-09-21T10:00:00.000Z')
+		);
+		const newer = createEvent(
+			db,
+			input,
+			'c'.repeat(64),
+			accountId,
+			new Date('2026-09-22T10:00:00.000Z')
+		);
+		const ids = listOptions(db, older.id).map((o) => o.id);
+		submitResponse(db, older, ids, '1'.repeat(64), response('Ana', [ids[0]]), {
+			autoApprove: false
+		});
+		submitResponse(db, older, ids, '2'.repeat(64), response('Ben', [ids[0]]), {
+			autoApprove: true
+		});
+		submitResponse(db, older, ids, '3'.repeat(64), response('ana', [ids[0]]), {
+			autoApprove: false
+		});
+		stopSubmissions(db, closed);
+
+		const list = listAccountEvents(db, accountId);
+
+		expect(list.map((e) => e.code)).toEqual([newer.code, older.code, closed.code]);
+		expect(list[1]).toMatchObject({
+			title: input.title,
+			state: 'open',
+			rosterFinal: false,
+			submittedCount: 3,
+			pendingCount: 2,
+			approvedCount: 1,
+			pending: [
+				{ name: 'Ana', status: 'pending', duplicate: true },
+				{ name: 'ana', status: 'pending', duplicate: true }
+			]
+		});
+		expect(list[0]).toMatchObject({
+			submittedCount: 0,
+			pendingCount: 0,
+			approvedCount: 0,
+			pending: []
+		});
+		expect(list[2]).toMatchObject({ state: 'closed' });
 	});
 });

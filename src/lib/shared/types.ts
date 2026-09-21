@@ -61,6 +61,19 @@ export type MineView = {
 
 export type RosterRow = { id: string; name: string; status: ParticipantStatus; duplicate: boolean };
 
+/** One event on the host home screen: counts and the pending names a host decides on, nothing else. */
+export type AccountEvent = {
+	code: string;
+	title: string;
+	state: EventState;
+	rosterFinal: boolean;
+	submittedCount: number;
+	pendingCount: number;
+	approvedCount: number;
+	pending: RosterRow[];
+	createdAt: string;
+};
+
 export type HostView = {
 	submittedCount: number;
 	pendingCount: number;
