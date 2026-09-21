@@ -61,10 +61,11 @@ Since then it runs as one Docker Compose stack on the hub VM at https://decide.a
 
 The page surface is small:
 
-- `/` is the home page where a host creates an event.
+- `/` is the home page: the create form for a visitor who is not signed in, and the host home screen of section 6.7 for a signed-in host.
+- `/new` is the create form for a signed-in host.
 - `/e/{code}` is the single event link for everyone.
 - `/signin` handles the magic link request and callback.
-- `/me` lists a signed-in host's events.
+- `/me` is the host home screen as well, kept so older links and the "My events" link on an event page keep working; it sends a visitor who is not signed in to `/signin`.
 - `/auth/openrouter/callback` receives the OpenRouter OAuth code.
 
 The analysis job runs inside the same process, one job per event at a time.
@@ -168,6 +169,16 @@ The host sees the report exactly as participants do, plus a copy-summary button 
 Each event carries an expiry: 90 days after publish, or 90 days after creation if never published.
 A nightly sweep deletes expired events that no account owns.
 Deleting an event removes everything, including the report.
+
+### 6.7 The host home screen (added 2026-09-21)
+
+A signed-in host lands on their home screen at `/`, which lists every event the account owns, open events first and newest first within each group, so the host can switch between events and decide on names from one place instead of opening each event.
+Each card shows the title as a link to the event page, the state, and the counts: how many submitted and, while the roster is not final, how many are pending.
+A card with pending names lists them with the same approve and reject controls as the roster, plus an approve-all button for that event; a line above the cards totals the pending names across all events while there are any.
+Approving or rejecting from the home screen uses the same endpoints as the event page, authorised by the account session, and the list refreshes after every decision.
+The home screen refreshes itself every 15 seconds while it is visible, so new requests appear without a reload, and again as soon as it becomes visible.
+Closing, analysis, publishing, and deleting stay on the event page.
+"New event" opens the create form at `/new`; the host view of every event carries a "My events" link back to the home screen at the top.
 
 ## 7. Participant experience
 
