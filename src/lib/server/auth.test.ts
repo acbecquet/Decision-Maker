@@ -235,10 +235,10 @@ describe('claiming and listing events', () => {
 		submitResponse(db, older, ids, '1'.repeat(64), response('Ana', [ids[0]]), {
 			autoApprove: false
 		});
-		submitResponse(db, older, ids, '2'.repeat(64), response('Ben', [ids[0]]), {
+		submitResponse(db, older, ids, '2'.repeat(64), response('ana', [ids[0]]), {
 			autoApprove: true
 		});
-		submitResponse(db, older, ids, '3'.repeat(64), response('ana', [ids[0]]), {
+		submitResponse(db, older, ids, '3'.repeat(64), response('Ben', [ids[0]]), {
 			autoApprove: false
 		});
 		stopSubmissions(db, closed);
@@ -255,7 +255,7 @@ describe('claiming and listing events', () => {
 			approvedCount: 1,
 			pending: [
 				{ name: 'Ana', status: 'pending', duplicate: true },
-				{ name: 'ana', status: 'pending', duplicate: true }
+				{ name: 'Ben', status: 'pending', duplicate: false }
 			]
 		});
 		expect(list[0]).toMatchObject({
