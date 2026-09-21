@@ -2,6 +2,12 @@
 # network, where Podium Chasers' Caddy terminates TLS and proxies
 # decide.acb-apps.com to the alias below. Run from the repo root:
 #   bash deploy/deploy.sh
+#
+# The project name is explicit because Compose would otherwise derive it from
+# this directory's name, "deploy", which Podium Chasers' stack on the same VM
+# already uses; two projects with one name replace each other's containers.
+name: decision-maker
+
 services:
   app:
     build:

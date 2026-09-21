@@ -18,6 +18,16 @@ mkdir -p deploy/backups deploy/logs
 GIT_COMMIT=$(git rev-parse --short HEAD)
 export GIT_COMMIT
 CO="docker compose -f deploy/docker-compose.yml"
+
+# Podium Chasers' stack on the same VM is the compose project "deploy" (named
+# after its directory); a DecisionMaker project with any name but its own would
+# replace Podium's containers, which happened once on 2026-09-21.
+PROJECT=$($CO config 2> /dev/null | sed -n 's/^name: //p' | head -1)
+if [ "$PROJECT" != "decision-maker" ]; then
+	echo "ERROR: the compose project resolves to '${PROJECT}', not decision-maker; refusing to touch another stack." >&2
+	exit 1
+fi
+
 echo "==> building and starting decision-maker at ${GIT_COMMIT}"
 $CO up -d --build
 

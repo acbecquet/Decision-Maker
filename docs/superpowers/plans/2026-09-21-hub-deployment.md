@@ -27,6 +27,13 @@ A nightly cron snapshot of the database replaces Litestream, which had no bucket
 - Why a cron snapshot and not Litestream: the snapshots are plain SQLite files anyone can open and restore, and a file replica on the same VM would add nothing over them.
 - Fly's config stays in the repo as the retired path.
 
+## What went wrong on the first hub deploy
+
+Compose derives a project name from the compose file's directory when none is given, and both this repo and Podium Chasers keep their compose file in a directory named `deploy`.
+The first deploy on 2026-09-21 at 17:49 UTC therefore ran as project `deploy` and recreated Podium's `deploy-app-1` container with the DecisionMaker image; podium.acb-apps.com answered 502 for about two minutes until `docker compose -f deploy/docker-compose.yml up -d --no-build app` in Podium's checkout put its own container back.
+Podium's data volume and pushed replica were never touched.
+The compose file now sets `name: decision-maker`, the deploy script refuses to run when the resolved project name is anything else, and the stray `deploy_dm-data` volume from the collision was removed.
+
 ---
 
 ### Task 1: Commit stamp in the image and the health endpoint
