@@ -78,6 +78,18 @@ The compose file now sets `name: decision-maker`, the deploy script refuses to r
 - [x] The root README's deploy section points there.
 - [x] The design spec's status line, hosting row, system overview, and assumptions carry the dated change.
 
+## Deviations after review
+
+The first review (652c4c0..5b5133f) and the fixes that followed changed the design in these ways; the code is the source of truth over the task text above.
+
+- The service is named `decision-maker`, not `app`, because Compose registers a service's name as a DNS alias on every network it joins; with `app` on `edge`, Podium's Caddy could have resolved its own `app:8098` upstream to this container. The alias block is gone since the service name now carries the name.
+- `/api/health` also reports `origin`, and the deploy script waits for both the commit and the `ORIGIN` from `deploy/.env.prod`, so a missing or wrong origin fails the deploy instead of surfacing as broken sign-in links; the script also refuses an `.env.prod` without `ORIGIN`, surfaces `docker compose config` errors, bounds the wait with a two-minute deadline, and passes `--remove-orphans` so a renamed service leaves no stale container behind.
+- `backup.sh` opens each snapshot and runs `integrity_check` before reporting success, deleting the copy and exiting 1 otherwise, and prunes with `-mtime +13` so exactly the last 14 days are kept; the restore procedure checks the snapshot the same way first and was drilled on the hub.
+- The e2e server runs with `APP_COMMIT=e2e`, so the health assertion checks the stamped value and the origin rather than any string.
+- Podium's Caddy block also sets the sniff, frame, and referrer headers, because adapter-node serves static files outside the hook that sets them in the app.
+- The OpenRouter referer fallback and the spot-check scripts name the new origin.
+- Recorded and left alone: the compose health check only feeds `docker compose ps`; the backup log is not rotated (one line a night); `deploy/backups/` must stay writable by the cron user, which the deploy script ensures by creating it first; the Litestream binary stays in the image for the retired Fly path; the hub's public address in the runbook will rot and the runbook says how to re-derive it.
+
 ### Task 5: Cutover on the hub
 
 - [x] `docker network create edge` (done 2026-09-21).

@@ -6,10 +6,13 @@
 # The project name is explicit because Compose would otherwise derive it from
 # this directory's name, "deploy", which Podium Chasers' stack on the same VM
 # already uses; two projects with one name replace each other's containers.
+# The service is not called `app` either: Compose registers a service's name
+# as a DNS alias on every network it joins, and Podium's Caddy reaches its own
+# app by that name.
 name: decision-maker
 
 services:
-  app:
+  decision-maker:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
@@ -34,9 +37,7 @@ services:
       # Nightly snapshots from deploy/backup.sh land here, on the host.
       - ./backups:/backups
     networks:
-      edge:
-        aliases:
-          - decision-maker
+      - edge
     healthcheck:
       test:
         [

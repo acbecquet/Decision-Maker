@@ -24,7 +24,7 @@ const options = [
 
 describe.skipIf(!keyFile)('live OpenRouter spot-check', () => {
 	const key = keyFile ? readFileSync(keyFile, 'utf8').trim() : '';
-	const provider = createOpenRouterProvider({ origin: 'https://decision-maker-cb.fly.dev' });
+	const provider = createOpenRouterProvider({ origin: 'https://decide.acb-apps.com' });
 
 	it('lists models with the DeepSeek alias first', async () => {
 		const models = await provider.listModels(key);

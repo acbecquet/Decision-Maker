@@ -8,7 +8,7 @@
 // mounted under /app and the source copy under /backups:
 //   docker compose -f deploy/docker-compose.yml run --rm --no-deps \
 //     -v "$PWD/deploy/merge-event.mjs:/app/deploy/merge-event.mjs:ro" \
-//     app node deploy/merge-event.mjs /backups/<source>.db /data/app.db <event code>
+//     decision-maker node deploy/merge-event.mjs /backups/<source>.db /data/app.db <event code>
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 

@@ -28,6 +28,7 @@ export default defineConfig({
 		env: {
 			PORT: String(port),
 			ORIGIN: `http://localhost:${port}`,
+			APP_COMMIT: 'e2e',
 			DATABASE_URL: 'e2e/.tmp/e2e.db',
 			ALLOW_FAKE_PROVIDER: '1',
 			ALLOW_MAIL_SINK: '1',

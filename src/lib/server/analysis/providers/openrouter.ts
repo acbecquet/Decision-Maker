@@ -90,7 +90,7 @@ export function createOpenRouterProvider(deps: Deps = {}): ModelProvider {
 		name: 'OpenRouter',
 		baseURL: BASE_URL,
 		defaultHeaders: {
-			'HTTP-Referer': deps.origin ?? process.env.ORIGIN ?? 'https://decision-maker-cb.fly.dev',
+			'HTTP-Referer': deps.origin ?? process.env.ORIGIN ?? 'https://decide.acb-apps.com',
 			'X-OpenRouter-Title': 'DecisionMaker'
 		},
 		tokensField: 'max_tokens',

@@ -430,7 +430,7 @@ The fake-provider suite is not.
 Each phase gets its own implementation plan, and the next phase does not start until the harness is green.
 
 1. Walking skeleton, deployed.
-   Schema and migrations, token roles, create event with costs and an optional auto-close time, link screen, the participant form with the ranking widget and budget chips, device lock and edit until close, roster and approval, close with tallies and suppression, the fake-provider seam, the harness core scenario, and the Docker image running always-on on Fly with Litestream backups and basic rate limits from day one.
+   Schema and migrations, token roles, create event with costs and an optional auto-close time, link screen, the participant form with the ranking widget and budget chips, device lock and edit until close, roster and approval, close with tallies and suppression, the fake-provider seam, the harness core scenario, and the Docker image running always-on on Fly with Litestream backups (hosting moved to the hub on 2026-09-21, section 4) and basic rate limits from day one.
 2. Analysis and report.
    The three adapters including OpenRouter connect, model picker, job runner with progress, the three stages with versioned prompts and schemas, draft, publish with purge, the report page with charts and the cost section, and copy summary.
 3. Accounts and lifecycle.
