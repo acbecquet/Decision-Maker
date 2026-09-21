@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { qrSvg } from '$lib/client/qr';
+	import { slugify } from '$lib/shared/slug';
 
 	let { code, title }: { code: string; title: string } = $props();
 
-	const url = $derived(`${location.origin}/e/${code}`);
+	const slug = $derived(slugify(title));
+	const url = $derived(`${location.origin}/e/${code}${slug ? `/${slug}` : ''}`);
 	let input: HTMLInputElement | undefined = $state();
 	let status = $state<'idle' | 'copied' | 'failed'>('idle');
 	let shareFailed = $state(false);

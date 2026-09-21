@@ -14,7 +14,12 @@
 	let view = $state<EventPageView | null>(null);
 	let error = $state('');
 
-	const back = () => goto(resolve(fromLink ? '/e/[code]?created=1' : '/e/[code]', { code }));
+	// The search hangs off `/e/[code]`: resolve() leaves a stray slash before it when the
+	// optional slug is the last segment, and the link screen's path must stay /e/<code>.
+	const back = () =>
+		goto(
+			fromLink ? resolve('/e/[code]?created=1', { code }) : resolve('/e/[code]/[[slug]]', { code })
+		);
 
 	onMount(async () => {
 		try {
@@ -24,7 +29,7 @@
 				loaded.event.state === 'open' &&
 				loaded.host?.submittedCount === 0;
 			if (!editable) {
-				await goto(resolve('/e/[code]', { code }));
+				await goto(resolve('/e/[code]/[[slug]]', { code }));
 				return;
 			}
 			view = loaded;

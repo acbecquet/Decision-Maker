@@ -22,7 +22,7 @@
 <button
 	type="button"
 	class="btn-primary btn-block"
-	onclick={() => goto(resolve('/e/[code]', { code }))}
+	onclick={() => goto(resolve('/e/[code]/[[slug]]', { code }))}
 >
 	Continue to host view
 </button>

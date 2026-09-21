@@ -23,7 +23,9 @@ test.describe('creating an event', () => {
 		await expect(page).toHaveURL(/\/e\/[0-9a-hj-kmnp-tv-z]{10}\?created=1$/);
 		const code = new URL(page.url()).pathname.split('/').pop() as string;
 		await expect(page.getByRole('heading', { name: 'Your event is ready' })).toBeVisible();
-		await expect(page.getByLabel('Share this link')).toHaveValue(new RegExp(`/e/${code}$`));
+		await expect(page.getByLabel('Share this link')).toHaveValue(
+			new RegExp(`/e/${code}/saturday-night-in-barcelona$`)
+		);
 		await expect(page.getByTestId('qr').locator('svg')).toBeVisible();
 
 		await page.getByRole('button', { name: 'Continue to host view' }).click();
@@ -87,7 +89,9 @@ test.describe('creating an event', () => {
 		const second = new URL(page.url()).pathname.split('/').pop() as string;
 		expect(second).not.toBe(first);
 		await expect(page.getByRole('heading', { name: 'Your event is ready' })).toBeVisible();
-		await expect(page.getByLabel('Share this link')).toHaveValue(new RegExp(`/e/${second}$`));
+		await expect(page.getByLabel('Share this link')).toHaveValue(
+			new RegExp(`/e/${second}/late-lunch$`)
+		);
 		await page.getByRole('button', { name: 'Continue to host view' }).click();
 		await expect(page.getByRole('heading', { name: 'Late lunch' })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Edit event' })).toBeVisible();

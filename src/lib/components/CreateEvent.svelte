@@ -20,6 +20,8 @@
 			headers: { 'x-host-token': hostToken }
 		});
 		setToken(code, 'host', hostToken);
+		// The search hangs off `/e/[code]`: resolve() leaves a stray slash before it when the
+		// optional slug is the last segment, and the link screen's path must stay /e/<code>.
 		await goto(resolve('/e/[code]?created=1', { code }));
 	}
 </script>

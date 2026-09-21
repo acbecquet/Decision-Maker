@@ -119,7 +119,7 @@
 		<ul style="list-style:none;padding:0;margin:0" data-testid="my-events">
 			{#each rows as row (row.code)}
 				<li class="card" style="margin:8px 0" data-testid={`event-${row.code}`}>
-					<a href={resolve('/e/[code]', { code: row.code })} style="text-decoration:none">
+					<a href={resolve('/e/[code]/[[slug]]', { code: row.code })} style="text-decoration:none">
 						<strong>{row.title}</strong>
 					</a>
 					<p style="margin:6px 0 0">

@@ -16,7 +16,7 @@
 		}
 		try {
 			const back = await finishOpenRouterConnect(code);
-			await goto(resolve('/e/[code]', { code: back }));
+			await goto(resolve('/e/[code]/[[slug]]', { code: back }));
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Connecting to OpenRouter failed.';
 		}
@@ -31,7 +31,10 @@
 	{#if error}
 		<p class="error" role="alert">{error}</p>
 		{#if eventCode}
-			<button type="button" onclick={() => goto(resolve('/e/[code]', { code: eventCode }))}>
+			<button
+				type="button"
+				onclick={() => goto(resolve('/e/[code]/[[slug]]', { code: eventCode }))}
+			>
 				Back to the event
 			</button>
 		{/if}

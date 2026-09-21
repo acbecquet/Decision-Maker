@@ -7,6 +7,8 @@
 	import ParticipantView from '$lib/components/ParticipantView.svelte';
 	import type { EventPageView } from '$lib/shared/types';
 
+	let { data } = $props();
+
 	const code = $derived(page.params.code ?? '');
 	let view = $state<EventPageView | null>(null);
 	let error = $state('');
@@ -27,7 +29,12 @@
 </script>
 
 <svelte:head>
-	<title>{view ? view.event.title : 'DecisionMaker'}</title>
+	<title>{view?.event.title ?? data.preview?.title ?? 'DecisionMaker'}</title>
+	{#if data.preview}
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content={data.preview.title} />
+		<meta property="og:url" content={data.preview.url} />
+	{/if}
 </svelte:head>
 
 <main>
