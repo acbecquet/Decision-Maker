@@ -61,7 +61,7 @@ A health `GET` proves neither writes nor mail, so also create a throwaway event 
 
 ## Backups and restore
 
-`deploy/backup.sh` writes a consistent copy of the database to `deploy/backups/app-<stamp>.db`, opens the copy and runs SQLite's integrity check before reporting success, removes the copy and exits 1 otherwise, and keeps the last 14 days.
+`deploy/backup.sh` writes a consistent copy of the database to `deploy/backups/app-<stamp>.db`, switches the copy to rollback-journal mode so it is one self-contained file that leaves no sidecars when opened, runs SQLite's integrity check before reporting success, removes the copy and exits 1 otherwise, and keeps the last 14 days.
 Snapshots sit on the same VM as the database, so they cover mistakes and corruption, not the loss of the VM; copy them elsewhere for that.
 `deploy/backups/` must stay writable by the cron user, which `deploy.sh` ensures by creating it before the stack first starts.
 

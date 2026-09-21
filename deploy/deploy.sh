@@ -17,28 +17,29 @@ if [ -z "$ORIGIN" ]; then
 	exit 1
 fi
 
+CO="docker compose -f deploy/docker-compose.yml"
+
+# Podium Chasers' stack on the same VM is the compose project "deploy" (named
+# after its directory); a DecisionMaker project with any name but its own would
+# replace Podium's containers, which happened once on 2026-09-21. This check
+# runs before anything else touches Docker.
+if ! CONFIG=$($CO config 2>&1); then
+	echo "ERROR: docker compose config failed:" >&2
+	echo "$CONFIG" >&2
+	exit 1
+fi
+PROJECT=$(printf '%s\n' "$CONFIG" | awk '/^name: /{print $2; exit}')
+if [ "$PROJECT" != "decision-maker" ]; then
+	echo "ERROR: the compose project resolves to '${PROJECT}', not decision-maker; refusing to touch another stack." >&2
+	exit 1
+fi
+
 # The edge network is shared with Podium Chasers' Caddy, which proxies to us on it.
 docker network inspect edge > /dev/null 2>&1 || docker network create edge
 mkdir -p deploy/backups deploy/logs
 
 GIT_COMMIT=$(git rev-parse --short HEAD)
 export GIT_COMMIT
-CO="docker compose -f deploy/docker-compose.yml"
-
-# Podium Chasers' stack on the same VM is the compose project "deploy" (named
-# after its directory); a DecisionMaker project with any name but its own would
-# replace Podium's containers, which happened once on 2026-09-21.
-if ! CONFIG=$($CO config 2>&1); then
-	echo "ERROR: docker compose config failed:" >&2
-	echo "$CONFIG" >&2
-	exit 1
-fi
-PROJECT=$(printf '%s\n' "$CONFIG" | sed -n 's/^name: //p' | head -1)
-if [ "$PROJECT" != "decision-maker" ]; then
-	echo "ERROR: the compose project resolves to '${PROJECT}', not decision-maker; refusing to touch another stack." >&2
-	exit 1
-fi
-
 echo "==> building and starting decision-maker at ${GIT_COMMIT} for ${ORIGIN}"
 $CO up -d --build --remove-orphans
 

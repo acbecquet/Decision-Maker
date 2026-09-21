@@ -21,11 +21,12 @@ const input = {
 	closesAt: null
 };
 
-/** A migrated file database whose handle the test can close, as openDatabase sets it up. */
+/** A migrated file database set up the way openDatabase does it, with a handle the test can close. */
 function open(path: string) {
 	const client = new Database(path);
 	client.pragma('journal_mode = WAL');
 	client.pragma('foreign_keys = ON');
+	client.pragma('busy_timeout = 5000');
 	const db = drizzle(client, { schema });
 	migrate(db, { migrationsFolder: 'drizzle' });
 	return { db, close: () => client.close() };
@@ -42,16 +43,60 @@ function seed(db: ReturnType<typeof open>['db'], title: string, names: string[])
 			String(i).repeat(64),
 			{
 				name,
-				ranking: [ids[0], ids[1]],
-				vetoes: [],
+				ranking: [ids[1], ids[0]],
+				vetoes: [ids[0]],
 				budget: null,
 				opinion: `${name} says`,
-				suggestion: ''
+				suggestion: `${name} suggests`
 			},
 			{ autoApprove: false }
 		);
 	}
 	return event.code;
+}
+
+/** Rebuilds the events table with its columns in reverse order, so a copy by position lands every value in the wrong column. */
+function reverseEventsColumns(path: string) {
+	const db = new Database(path);
+	db.pragma('foreign_keys = OFF');
+	const cols = (db.pragma('table_info(events)') as { name: string; type: string }[]).reverse();
+	const defs = cols
+		.map((c) => `"${c.name}" ${c.type}${c.name === 'id' ? ' primary key' : ''}`)
+		.join(', ');
+	const names = cols.map((c) => `"${c.name}"`).join(', ');
+	db.exec(
+		`create table events_reversed (${defs}, unique("code"));
+		 insert into events_reversed (${names}) select ${names} from events;
+		 drop table events;
+		 alter table events_reversed rename to events;`
+	);
+	db.close();
+}
+
+type Row = Record<string, unknown>;
+
+/** Every row that belongs to one event, by column name, in a stable order. */
+function eventRows(path: string, code: string): Record<string, Row[]> {
+	const db = new Database(path, { readonly: true });
+	try {
+		const event = db.prepare('select id from events where code = ?').get(code) as
+			{ id: string } | undefined;
+		if (!event) return {};
+		const rows = (sql: string) =>
+			(db.prepare(sql).all(event.id) as Row[]).map((r) =>
+				Object.fromEntries(Object.entries(r).sort(([a], [b]) => a.localeCompare(b)))
+			);
+		return {
+			events: rows('select * from events where id = ?'),
+			options: rows('select * from options where event_id = ? order by position'),
+			participants: rows('select * from participants where event_id = ? order by display_name'),
+			responses: rows(
+				'select r.* from responses r join participants p on p.id = r.participant_id where p.event_id = ? order by p.display_name'
+			)
+		};
+	} finally {
+		db.close();
+	}
 }
 
 function counts(path: string) {
@@ -65,18 +110,6 @@ function counts(path: string) {
 			responses: n('select count(*) n from responses'),
 			fkProblems: (db.pragma('foreign_key_check') as unknown[]).length
 		};
-	} finally {
-		db.close();
-	}
-}
-
-function codes(path: string): string[] {
-	const db = new Database(path, { readonly: true });
-	try {
-		return db
-			.prepare('select code from events order by code')
-			.all()
-			.map((r) => (r as { code: string }).code);
 	} finally {
 		db.close();
 	}
@@ -97,14 +130,16 @@ describe('mergeEvent', () => {
 		rmSync(dir, { recursive: true, force: true });
 	});
 
-	it('copies one event with its options, participants, and responses, and only that event', () => {
+	it('copies every value of one event by column name, and only that event', () => {
 		const src = open(source);
 		const wanted = seed(src.db, 'Axis dinner', ['Ana', 'Ben', 'Cleo']);
-		seed(src.db, 'Left behind', ['Dev']);
+		const leftBehind = seed(src.db, 'Left behind', ['Dev']);
 		src.close();
+		reverseEventsColumns(source);
 		const dst = open(target);
 		const own = seed(dst.db, 'Already on the hub', ['Eve', 'Finn']);
 		dst.close();
+		const ownBefore = eventRows(target, own);
 
 		const result = mergeEvent(target, source, wanted);
 
@@ -113,6 +148,16 @@ describe('mergeEvent', () => {
 			title: 'Axis dinner',
 			copied: { events: 1, options: 2, participants: 3, responses: 3 }
 		});
+		const copied = eventRows(target, wanted);
+		expect(copied).toEqual(eventRows(source, wanted));
+		expect(copied.events[0]).toMatchObject({
+			title: 'Axis dinner',
+			currency: 'USD',
+			state: 'open'
+		});
+		expect(copied.responses.map((r) => r.opinion)).toEqual(['Ana says', 'Ben says', 'Cleo says']);
+		expect(eventRows(target, own)).toEqual(ownBefore);
+		expect(eventRows(target, leftBehind)).toEqual({});
 		expect(counts(target)).toEqual({
 			events: 2,
 			options: 4,
@@ -120,7 +165,6 @@ describe('mergeEvent', () => {
 			responses: 5,
 			fkProblems: 0
 		});
-		expect(codes(target)).toEqual([own, wanted].sort());
 	});
 
 	it('copies nothing on a second run', () => {
@@ -142,5 +186,20 @@ describe('mergeEvent', () => {
 
 		expect(() => mergeEvent(target, source, 'nope')).toThrow(/no event with code nope/);
 		expect(counts(target).events).toBe(0);
+	});
+
+	it('refuses to merge over a different event that already uses the code', () => {
+		const dst = open(target);
+		const taken = seed(dst.db, 'Already on the hub', ['Eve']);
+		dst.close();
+		const src = open(source);
+		seed(src.db, 'Axis dinner', ['Ana']);
+		src.close();
+		const raw = new Database(source);
+		raw.prepare('update events set code = ?').run(taken);
+		raw.close();
+
+		expect(() => mergeEvent(target, source, taken)).toThrow(/different event with code/);
+		expect(counts(target)).toMatchObject({ events: 1, participants: 1 });
 	});
 });

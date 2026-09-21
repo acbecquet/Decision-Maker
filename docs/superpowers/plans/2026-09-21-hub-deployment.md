@@ -88,6 +88,8 @@ The first review (652c4c0..5b5133f) and the fixes that followed changed the desi
 - The e2e server runs with `APP_COMMIT=e2e`, so the health assertion checks the stamped value and the origin rather than any string.
 - Podium's Caddy block also sets the sniff, frame, and referrer headers, because adapter-node serves static files outside the hook that sets them in the app.
 - The OpenRouter referer fallback and the spot-check scripts name the new origin.
+- The second review (5b5133f..57f9cf9) hardened `deploy/merge-event.mjs`: column lists come from `main.table_info` and are quoted, a different event already using the code is refused before anything is written, the copy runs in an immediate transaction and is verified row for row against the source before it commits, and the entry-point guard resolves symlinks; its test now reverses the source's `events` columns and compares every copied value by name, and the script header says the source must come from the backup API because a plain copy of a WAL database loses unflushed writes.
+- The restore drill showed that opening a snapshot leaves `-wal` and `-shm` sidecars beside it, so `backup.sh` switches each snapshot to rollback-journal mode and the prune covers sidecars; the project-name guard in `deploy.sh` now runs before any Docker side effect and reads the name with `awk`.
 - Recorded and left alone: the compose health check only feeds `docker compose ps`; the backup log is not rotated (one line a night); `deploy/backups/` must stay writable by the cron user, which the deploy script ensures by creating it first; the Litestream binary stays in the image for the retired Fly path; the hub's public address in the runbook will rot and the runbook says how to re-derive it.
 
 ### Task 5: Cutover on the hub
@@ -97,4 +99,4 @@ The first review (652c4c0..5b5133f) and the fixes that followed changed the desi
 - [ ] Charlie adds the DNS record; then pull Podium's Caddy change on the hub, `docker compose up -d caddy`, and reload Caddy once the record resolves.
 - [ ] Verify from outside: TLS, `/api/health` with the deployed commit, the security headers, a create and delete cycle, and a sign-in mail on the verified domain.
 - [x] Install the snapshot cron line and run it once (done 2026-09-21: first snapshot passed an integrity check).
-- [ ] Recover the Axis dinner event: once Fly access is restored with a card, copy `/data/app.db` off the volume, merge that event's rows into the hub database, and attach the event to Charlie's account after he signs in.
+- [ ] Recover the Axis dinner event: once Fly access is restored with a card, take a copy of `/data/app.db` through SQLite's backup API (a plain copy of a WAL database loses unflushed writes), merge that event's rows into the hub database with `deploy/merge-event.mjs`, and attach the event to Charlie's account after he signs in.
