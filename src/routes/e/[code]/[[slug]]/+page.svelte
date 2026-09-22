@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/client/api';
 	import HostView from '$lib/components/HostView.svelte';
@@ -25,7 +24,12 @@
 		}
 	}
 
-	onMount(load);
+	// One page instance serves both /e/<code>?created=1 and /e/<code>, so the view reloads whenever
+	// the address changes, not only on the first mount; the link screen never shows stale counts.
+	$effect(() => {
+		void page.url.href;
+		void load();
+	});
 </script>
 
 <svelte:head>
