@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { newDevice, openAsParticipant, optionIds, submitApi, token } from './helpers';
+import {
+	createEventApi,
+	newDevice,
+	openAsHost,
+	openAsParticipant,
+	optionIds,
+	submitApi,
+	token
+} from './helpers';
 
 test.describe('single choice', () => {
 	test('a host creates a yes or no event, people pick one, and the tallies show votes', async ({
@@ -192,4 +200,56 @@ test.describe('opinions only', () => {
 		await guest.context.close();
 		await host.context.close();
 	});
+});
+
+test('a single-choice event with fewer than five answers still names the winner by votes', async ({
+	browser,
+	request
+}) => {
+	const hostToken = token();
+	const code = await createEventApi(request, hostToken, {
+		title: 'Pool or beach?',
+		mode: 'single',
+		options: [
+			{ label: 'Pool', note: '', cost: null },
+			{ label: 'Beach', note: '', cost: null }
+		]
+	});
+	const [pool, beach] = await optionIds(request, code);
+	for (const [name, pick] of [
+		['Ana', beach],
+		['Ben', beach],
+		['Cleo', pool]
+	] as const) {
+		const res = await submitApi(request, code, token(), {
+			name,
+			ranking: [pick],
+			opinion: 'Fine.'
+		});
+		expect(res.status()).toBe(201);
+	}
+	const host = { 'x-host-token': hostToken };
+	await request.post(`/api/events/${code}/roster/approve-all`, { headers: host });
+	await request.post(`/api/events/${code}/close`, { headers: host, data: { pending: 'approve' } });
+	const started = await request.post(`/api/events/${code}/analysis`, {
+		headers: host,
+		data: { provider: 'fake', key: 'demo', model: 'fake-fast' }
+	});
+	expect(started.status()).toBe(202);
+	await expect
+		.poll(
+			async () =>
+				(await (await request.get(`/api/events/${code}/analysis`, { headers: host })).json())
+					.status,
+			{ timeout: 20_000 }
+		)
+		.toBe('succeeded');
+
+	const { page, context } = await openAsHost(browser, code, hostToken);
+	const report = page.getByTestId('report');
+	await expect(report).toBeVisible();
+	await expect(report).toContainText('Winner');
+	await expect(report.getByText('Beach', { exact: true }).first()).toBeVisible();
+	await expect(report).toContainText('Numbers appear once at least 5 approved responses are in.');
+	await context.close();
 });

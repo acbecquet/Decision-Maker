@@ -46,15 +46,18 @@ export function fakeSynthesize(
 	const b = input.tallies.breakdown;
 	const voted = input.mode === 'single';
 	const listed = (x: string, y: string) => ids.indexOf(x) - ids.indexOf(y);
-	const order = !b
-		? ids
-		: voted
-			? [...b.firstChoice]
-					.sort((x, y) => y.count - x.count || listed(x.optionId, y.optionId))
-					.map((f) => f.optionId)
-			: [...b.borda]
-					.sort((x, y) => y.score - x.score || listed(x.optionId, y.optionId))
-					.map((s) => s.optionId);
+	const order =
+		voted && input.voteOrder?.length
+			? input.voteOrder
+			: !b
+				? ids
+				: voted
+					? [...b.firstChoice]
+							.sort((x, y) => y.count - x.count || listed(x.optionId, y.optionId))
+							.map((f) => f.optionId)
+					: [...b.borda]
+							.sort((x, y) => y.score - x.score || listed(x.optionId, y.optionId))
+							.map((s) => s.optionId);
 	const best = order[0] ?? ids[0];
 	const runnerUp = order[1] ?? best;
 	const worst = order[order.length - 1] ?? best;

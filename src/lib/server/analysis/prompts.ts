@@ -25,6 +25,11 @@ export type SynthesizeInput = {
 	costMattersToSome: boolean;
 	/** Anonymized points grouped by response, already shuffled. */
 	groups: Point[][];
+	/**
+	 * Single choice only: the options by votes, most first. Given even when the counts are
+	 * withheld, so the headline follows the votes without stating a number.
+	 */
+	voteOrder?: string[];
 };
 
 const money = (cost: number | null, currency: string) =>
@@ -100,16 +105,21 @@ function numbers(input: SynthesizeInput): string[] {
 	if (mode === 'freeform') {
 		return [`${tallies.approvedCount} approved responses. No options and no numbers.`];
 	}
+	const byVotes =
+		mode === 'single' && input.voteOrder?.length
+			? [`By votes, most first: ${input.voteOrder.map(name).join(', ')}.`]
+			: [];
 	if (!tallies.breakdown) {
 		return [
-			`${tallies.approvedCount} approved responses, too few responses to show a breakdown. Do not state or estimate per-option numbers.`
+			`${tallies.approvedCount} approved responses, too few responses to show a breakdown. Do not state or estimate per-option numbers.`,
+			...byVotes
 		];
 	}
 	const b = tallies.breakdown;
 	const counted = b.firstChoice.map((f) => `${name(f.optionId)} ${f.count}`).join(', ');
 	const lines =
 		mode === 'single'
-			? [`${tallies.approvedCount} approved responses.`, `Votes: ${counted}`]
+			? [`${tallies.approvedCount} approved responses.`, `Votes: ${counted}`, ...byVotes]
 			: [
 					`${tallies.approvedCount} approved responses.`,
 					`First choices: ${counted}`,
@@ -145,7 +155,7 @@ function fieldsLine(mode: EventMode): string {
 	}
 	const headline =
 		mode === 'single'
-			? 'best (the option with the most votes; when votes tie, say so in the rationale and pick the one the points support), runnerUp, worst (the fewest votes, factual wording)'
+			? 'best (the first option by votes, even when the counts are withheld; when votes tie, pick among the tied and say so in the rationale), runnerUp (the next by votes), worst (the last by votes, factual wording)'
 			: 'best (the option to recommend, with a one-line verdict, a short rationale, and consensus strong, moderate, or split), runnerUp, worst (factual wording, never harsh)';
 	return `Fields: ${headline}, ${UNEXPECTED_FIELD}, ${THEME_FIELDS}, summary (one plain paragraph a host can paste into the group chat, mentioning cost when it matters).`;
 }

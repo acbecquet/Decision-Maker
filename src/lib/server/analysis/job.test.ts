@@ -11,6 +11,7 @@ import { fakeProvider } from './fake';
 import { abortAnalysis, analysisStatus, isRunning, startAnalysis } from './job';
 import type { Db } from '../db';
 import type { EventRow } from '../db/schema';
+import { upgradeReport } from '$lib/shared/report';
 
 const opinions = [
 	'SENTINEL-Ana central is key. Cheap is fine.',
@@ -151,6 +152,41 @@ describe('startAnalysis', () => {
 		expect(() => startAnalysis(db, getEventById(db, event.id), input, fakeProvider)).toThrow(
 			/already published/
 		);
+	});
+
+	it('asks for the opinions-only schema and stores no decision for an opinions-only event', async () => {
+		const db = makeDb();
+		const event = makeEvent(db, { mode: 'freeform', options: [] });
+		opinions.filter(Boolean).forEach((opinion, i) =>
+			submitResponse(db, event, [], String(i).repeat(64), response(`P${i}`, [], { opinion }), {
+				autoApprove: true
+			})
+		);
+		const closed = finalizeRoster(db, event, 'approve');
+		const schemas: string[][] = [];
+		const stub: ModelProvider = {
+			id: 'fake',
+			async listModels() {
+				return [];
+			},
+			async completeJson(req) {
+				if (req.payload.stage === 'synthesize') {
+					schemas.push(
+						Object.keys((req.schema as { properties: Record<string, unknown> }).properties)
+					);
+				}
+				return fakeProvider.completeJson(req);
+			}
+		};
+		const { done } = startAnalysis(db, closed, input, stub);
+		await done;
+		expect(schemas).toHaveLength(1);
+		expect(schemas[0]).not.toContain('best');
+		expect(schemas[0]).toContain('themes');
+		expect(upgradeReport(getEventById(db, event.id).report)).toMatchObject({
+			mode: 'freeform',
+			decision: null
+		});
 	});
 
 	it('redacts the key from a failure message', async () => {

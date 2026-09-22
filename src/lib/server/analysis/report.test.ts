@@ -145,24 +145,42 @@ describe('buildReport', () => {
 		expect(report.unexpected).toBeNull();
 	});
 
-	it('refuses a single-choice winner that does not have the most votes, and allows a tie', () => {
-		const other = options.find((o) => o.id !== output.best.optionId)!;
-		const votes = (bestCount: number) =>
-			options.map((o) => ({
-				optionId: o.id,
-				count: o.id === output.best.optionId ? bestCount : o.id === other.id ? 3 : 0
-			}));
-		expect(() => buildReport(output, points, quotable, options, 'single', meta, votes(1))).toThrow(
-			/has the most votes/
+	it('holds every single-choice card to the votes and refuses a winner that is not a leader', () => {
+		const votes = (o1: number, o2: number) => [
+			{ optionId: 'o1', count: o1 },
+			{ optionId: 'o2', count: o2 }
+		];
+		expect(() =>
+			buildReport(output, points, quotable, options, 'single', meta, votes(1, 3))
+		).toThrow(/has the most votes/);
+		const tied = buildReport(output, points, quotable, options, 'single', meta, votes(3, 3));
+		expect(tied.decision).toMatchObject({
+			best: { optionId: 'o1' },
+			runnerUp: { optionId: 'o2' },
+			worst: { optionId: 'o2' }
+		});
+		const swapped = buildReport(
+			{
+				...output,
+				runnerUp: { ...output.runnerUp, optionId: 'o1' },
+				worst: { ...output.worst, optionId: 'o1' }
+			},
+			points,
+			quotable,
+			options,
+			'single',
+			meta,
+			votes(4, 1)
 		);
+		expect(swapped.decision).toMatchObject({
+			best: { optionId: 'o1', verdict: 'Tapas.' },
+			runnerUp: { optionId: 'o2' },
+			worst: { optionId: 'o2' }
+		});
 		expect(
-			buildReport(output, points, quotable, options, 'single', meta, votes(3)).decision?.best
+			buildReport(output, points, quotable, options, 'ranked', meta, votes(1, 3)).decision?.best
 				.optionId
-		).toBe(output.best.optionId);
-		expect(
-			buildReport(output, points, quotable, options, 'ranked', meta, votes(1)).decision?.best
-				.optionId
-		).toBe(output.best.optionId);
+		).toBe('o1');
 	});
 
 	it('keeps the decision for a single-choice event', () => {

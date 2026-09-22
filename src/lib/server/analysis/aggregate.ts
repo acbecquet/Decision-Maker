@@ -87,6 +87,14 @@ export function aggregate(opts: AggregateOption[], responses: AggregateResponse[
 	};
 }
 
+/** Options by votes, most first, ties by the order the host listed them: what single choice decides by. */
+export function voteOrder(agg: Aggregates, optionIds: string[]): string[] {
+	const listed = (x: string, y: string) => optionIds.indexOf(x) - optionIds.indexOf(y);
+	return [...agg.firstChoice]
+		.sort((x, y) => y.count - x.count || listed(x.optionId, y.optionId))
+		.map((f) => f.optionId);
+}
+
 const hideBelow = (value: number, floor: number): number | null => (value >= floor ? value : null);
 
 /** Applies the suppression rules. Hosts and reports only ever see the result of this function. */

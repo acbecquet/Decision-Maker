@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregate, findCondorcetWinner, presentTallies } from './aggregate';
+import { aggregate, findCondorcetWinner, presentTallies, voteOrder } from './aggregate';
 import type { Budget } from '$lib/shared/types';
 
 const opts = [
@@ -122,5 +122,17 @@ describe('presentTallies', () => {
 		const presented = presentTallies(aggregate(opts, six));
 		expect(presented.breakdown?.firstChoice[0]).toEqual({ optionId: 'A', count: 3 });
 		expect(presented.breakdown?.condorcetWinner).toBe('A');
+	});
+});
+
+describe('voteOrder', () => {
+	it('orders options by votes, most first, ties by the order the host listed them', () => {
+		const agg = aggregate(opts, [r(['B']), r(['C']), r(['B']), r(['D'])]);
+		expect(
+			voteOrder(
+				agg,
+				opts.map((o) => o.id)
+			)
+		).toEqual(['B', 'C', 'D', 'A']);
 	});
 });

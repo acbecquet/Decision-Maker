@@ -37,7 +37,7 @@ export function buildReport(
 ): Report {
 	const known = new Set(options.map((o) => o.id));
 	/** An opinions-only event decides nothing, so it has no headline options to check. */
-	const headline = mode === 'freeform' || !('best' in output) ? null : output;
+	let headline = mode === 'freeform' || !('best' in output) ? null : output;
 	if (headline) {
 		for (const id of [
 			headline.best.optionId,
@@ -49,11 +49,23 @@ export function buildReport(
 		if (mode === 'single' && votes.length > 0) {
 			const most = Math.max(...votes.map((v) => v.count));
 			const leaders = votes.filter((v) => v.count === most).map((v) => v.optionId);
-			if (!leaders.includes(headline.best.optionId)) {
-				throw new Error(
-					`The model crowned ${headline.best.optionId} but ${leaders.join(' or ')} has the most votes`
-				);
+			const best = headline.best.optionId;
+			if (!leaders.includes(best)) {
+				throw new Error(`The model crowned ${best} but ${leaders.join(' or ')} has the most votes`);
 			}
+			// The other two cards follow the votes too; the model only wrote their text.
+			const listed = (x: string, y: string) =>
+				options.findIndex((o) => o.id === x) - options.findIndex((o) => o.id === y);
+			const order = [...votes]
+				.sort((x, y) => y.count - x.count || listed(x.optionId, y.optionId))
+				.map((v) => v.optionId);
+			const runnerUp = order.find((id) => id !== best) ?? best;
+			const worst = [...order].reverse().find((id) => id !== best) ?? best;
+			headline = {
+				...headline,
+				runnerUp: { ...headline.runnerUp, optionId: runnerUp },
+				worst: { ...headline.worst, optionId: worst }
+			};
 		}
 	}
 	const byId = new Map(points.map((p) => [p.id, p]));

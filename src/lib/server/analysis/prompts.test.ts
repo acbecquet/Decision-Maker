@@ -186,6 +186,20 @@ describe('synthesizePrompt', () => {
 		expect(user).not.toContain('First choices:');
 	});
 
+	it('gives a single-choice event its order by votes even when the counts are withheld', () => {
+		const ids = input.options.map((o) => o.id);
+		const withheld = synthesizePrompt({
+			...input,
+			mode: 'single',
+			voteOrder: [ids[1], ids[0], ids[2]],
+			tallies: { approvedCount: 3, breakdown: null }
+		});
+		expect(withheld.user).toContain('too few responses to show a breakdown');
+		expect(withheld.user).toContain('By votes, most first: Beach BBQ, Tapas crawl, Paella class.');
+		expect(withheld.user).not.toContain('Votes:');
+		expect(withheld.system).toContain('even when the counts are withheld');
+	});
+
 	it('gives a single-choice event votes, and no rank, Borda, or head to head lines', () => {
 		const { system, user } = synthesizePrompt({ ...input, mode: 'single' });
 		expect(user).toContain('Votes: Tapas crawl 4, Beach BBQ 2, Paella class 0');
@@ -193,8 +207,8 @@ describe('synthesizePrompt', () => {
 		expect(user).not.toContain('Borda');
 		expect(user).not.toContain('Head to head');
 		expect(user).toContain('Tapas crawl (EUR 25): over budget for 3');
-		expect(system).toContain('the option with the most votes');
-		expect(system).toContain('the fewest votes');
+		expect(system).toContain('the first option by votes');
+		expect(system).toContain('the last by votes');
 	});
 
 	it('gives an opinions-only event no options, no numbers, and no decision fields', () => {

@@ -7,7 +7,7 @@ import type { Db, DbLike } from '../db';
 import { analysisJobs, anonymizedPoints, events, type EventRow } from '../db/schema';
 import { conflict } from '../errors';
 import { getEventById, listOptions, toEventView } from '../events';
-import { presentTallies } from './aggregate';
+import { presentTallies, voteOrder } from './aggregate';
 import {
 	ProviderError,
 	redact,
@@ -269,7 +269,14 @@ async function runJob(
 				options,
 				tallies: presentTallies(aggregates),
 				costMattersToSome: costMattersToSome(aggregates),
-				groups
+				groups,
+				voteOrder:
+					event.mode === 'single'
+						? voteOrder(
+								aggregates,
+								options.map((o) => o.id)
+							)
+						: []
 			}
 		},
 		'synthesize',

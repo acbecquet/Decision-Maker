@@ -138,6 +138,20 @@ describe('fakeSynthesize', () => {
 		expect(out.best.consensus).toBe('moderate');
 	});
 
+	it('follows the order by votes in a single-choice event whose counts are withheld', () => {
+		const votes = synthesizeOutput.parse(
+			fakeSynthesize({
+				...input,
+				mode: 'single',
+				voteOrder: ['o3', 'o1', 'o2'],
+				tallies: { approvedCount: 3, breakdown: null }
+			})
+		);
+		expect(votes.best.optionId).toBe('o3');
+		expect(votes.runnerUp.optionId).toBe('o1');
+		expect(votes.worst.optionId).toBe('o2');
+	});
+
 	it('picks by votes in a single-choice event and decides nothing in an opinions-only one', () => {
 		const votes = synthesizeOutput.parse(
 			fakeSynthesize({
