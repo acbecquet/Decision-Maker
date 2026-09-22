@@ -76,7 +76,12 @@
 	{/if}
 
 	<h2>Numbers</h2>
-	<TalliesView tallies={view.tallies} options={view.options} currency={view.currency} />
+	<TalliesView
+		tallies={view.tallies}
+		options={view.options}
+		currency={view.currency}
+		mode={view.mode}
+	/>
 
 	<h2>What people said</h2>
 	{#each view.report.themes as theme, i (i)}

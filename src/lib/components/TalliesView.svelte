@@ -1,16 +1,24 @@
 <script lang="ts">
 	import { RULES } from '$lib/shared/constants';
 	import { formatMoney } from '$lib/shared/money';
-	import type { OptionView, PresentedTallies } from '$lib/shared/types';
+	import type { EventMode, OptionView, PresentedTallies } from '$lib/shared/types';
 
 	let {
 		tallies,
 		options,
-		currency
-	}: { tallies: PresentedTallies; options: OptionView[]; currency: string } = $props();
+		currency,
+		mode
+	}: {
+		tallies: PresentedTallies;
+		options: OptionView[];
+		currency: string;
+		mode: EventMode;
+	} = $props();
 
 	const label = (id: string) => options.find((o) => o.id === id)?.label ?? id;
-	const breakdown = $derived(tallies.breakdown);
+	/** An opinions-only event is the count alone: no breakdown at any size, not even a waiting card. */
+	const breakdown = $derived(mode === 'freeform' ? null : tallies.breakdown);
+	const waiting = $derived(mode !== 'freeform' && !tallies.breakdown);
 	const maxFirst = $derived(
 		breakdown ? Math.max(1, ...breakdown.firstChoice.map((f) => f.count)) : 1
 	);
@@ -36,12 +44,12 @@
 	{tallies.approvedCount} approved {tallies.approvedCount === 1 ? 'response' : 'responses'}
 </p>
 
-{#if !breakdown}
+{#if waiting}
 	<div class="card">
 		<p>Numbers appear once at least {RULES.minBreakdownResponses} approved responses are in.</p>
 	</div>
-{:else}
-	<h3>First choices</h3>
+{:else if breakdown}
+	<h3>{mode === 'single' ? 'Votes' : 'First choices'}</h3>
 	<div data-testid="first-choices">
 		{#each breakdown.firstChoice as f (f.optionId)}
 			<div class="bar">
@@ -57,33 +65,35 @@
 		{/each}
 	</div>
 
-	<h3>Where each option ranked</h3>
-	{#each breakdown.rankMatrix as r (r.optionId)}
-		<div class="bar">
-			<span class="name">{label(r.optionId)}</span>
-			<div class="track">
-				{#each segments(r.ranks, r.unranked) as s, i (i)}
-					<div class="seg" style={`width:${s.width}%;background:${s.color}`}></div>
-				{/each}
+	{#if mode === 'ranked'}
+		<h3>Where each option ranked</h3>
+		{#each breakdown.rankMatrix as r (r.optionId)}
+			<div class="bar">
+				<span class="name">{label(r.optionId)}</span>
+				<div class="track">
+					{#each segments(r.ranks, r.unranked) as s, i (i)}
+						<div class="seg" style={`width:${s.width}%;background:${s.color}`}></div>
+					{/each}
+				</div>
+				<span class="val"></span>
 			</div>
-			<span class="val"></span>
-		</div>
-	{/each}
-	<p class="small muted">
-		Darker means ranked higher. The lightest segment is last place or unranked.
-	</p>
-
-	{#if breakdown.vetoes.some((v) => v.count > 0)}
-		<h3>Won't work for</h3>
-		{#each breakdown.vetoes.filter((v) => v.count > 0) as v (v.optionId)}
-			<p class="small">{label(v.optionId)}: {v.count}</p>
 		{/each}
-	{/if}
-
-	{#if breakdown.condorcetWinner}
 		<p class="small muted">
-			{label(breakdown.condorcetWinner)} beats every other option head to head.
+			Darker means ranked higher. The lightest segment is last place or unranked.
 		</p>
+
+		{#if breakdown.vetoes.some((v) => v.count > 0)}
+			<h3>Won't work for</h3>
+			{#each breakdown.vetoes.filter((v) => v.count > 0) as v (v.optionId)}
+				<p class="small">{label(v.optionId)}: {v.count}</p>
+			{/each}
+		{/if}
+
+		{#if breakdown.condorcetWinner}
+			<p class="small muted">
+				{label(breakdown.condorcetWinner)} beats every other option head to head.
+			</p>
+		{/if}
 	{/if}
 
 	{#if breakdown.cost}

@@ -80,6 +80,7 @@
 			tallies={view.host.tallies}
 			options={view.event.options}
 			currency={view.event.currency}
+			mode={view.event.mode}
 		/>
 	{/if}
 	<ModelPanel

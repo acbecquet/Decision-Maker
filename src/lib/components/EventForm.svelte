@@ -2,8 +2,8 @@
 	import { untrack } from 'svelte';
 	import { ApiError } from '$lib/client/api';
 	import { toLocalInput } from '$lib/client/datetime';
-	import { CURRENCIES, LIMITS, type Currency } from '$lib/shared/constants';
-	import type { EventView } from '$lib/shared/types';
+	import { CURRENCIES, LIMITS, MODE_LABELS, MODES, type Currency } from '$lib/shared/constants';
+	import type { EventMode, EventView } from '$lib/shared/types';
 	import { createEventInput, type CreateEventInput } from '$lib/shared/validation';
 
 	let {
@@ -26,6 +26,7 @@
 
 	let title = $state(seed?.title ?? '');
 	let context = $state(seed?.context ?? '');
+	let mode = $state<EventMode>(seed?.mode ?? 'ranked');
 	let currency = $state<Currency>(
 		seed && (CURRENCIES as readonly string[]).includes(seed.currency)
 			? (seed.currency as Currency)
@@ -45,6 +46,11 @@
 	let error = $state('');
 	let busy = $state(false);
 
+	// An event created as opinions only has no options, so leaving that mode needs somewhere to type them.
+	$effect(() => {
+		if (mode !== 'freeform' && untrack(() => options.length) === 0) options = [blank(), blank()];
+	});
+
 	function addOption() {
 		if (options.length < LIMITS.maxOptions) options.push(blank());
 	}
@@ -58,11 +64,15 @@
 			title,
 			context,
 			currency,
-			options: options.map((o) => ({
-				label: o.label,
-				note: o.note,
-				cost: o.cost.trim() === '' ? null : Number(o.cost)
-			})),
+			mode,
+			options:
+				mode === 'freeform'
+					? []
+					: options.map((o) => ({
+							label: o.label,
+							note: o.note,
+							cost: o.cost.trim() === '' ? null : Number(o.cost)
+						})),
 			closesAt: closesAtLocal ? new Date(closesAtLocal).toISOString() : null
 		};
 	}
@@ -70,7 +80,10 @@
 	async function submit(e: SubmitEvent) {
 		e.preventDefault();
 		error = '';
-		if (options.some((o) => o.cost.trim() !== '' && Number.isNaN(Number(o.cost)))) {
+		if (
+			mode !== 'freeform' &&
+			options.some((o) => o.cost.trim() !== '' && Number.isNaN(Number(o.cost)))
+		) {
 			error = 'Cost has to be a number';
 			return;
 		}
@@ -111,49 +124,61 @@
 		placeholder="Dinner plans for the group, budget around 30 euros"
 	/>
 
-	<label for="currency">Currency</label>
-	<select id="currency" bind:value={currency}>
-		{#each CURRENCIES as c (c)}
-			<option value={c}>{c}</option>
+	<fieldset>
+		<legend>How people answer</legend>
+		{#each MODES as m (m)}
+			<label class="row">
+				<input type="radio" name="mode" value={m} bind:group={mode} />
+				<span class="grow">{MODE_LABELS[m]}</span>
+			</label>
 		{/each}
-	</select>
+	</fieldset>
 
-	<h2>Options</h2>
-	{#each options as option, i (option.id)}
-		<div class="card">
-			<label for={`label-${option.id}`}>Option {i + 1}</label>
-			<input
-				id={`label-${option.id}`}
-				bind:value={option.label}
-				maxlength={LIMITS.optionLabel}
-				placeholder="Tapas crawl in El Born"
-			/>
-			<label for={`note-${option.id}`}>Note <span class="muted">optional</span></label>
-			<input
-				id={`note-${option.id}`}
-				bind:value={option.note}
-				maxlength={LIMITS.optionNote}
-				placeholder="Central, easy to split into tables"
-			/>
-			<label for={`cost-${option.id}`}>Cost per person <span class="muted">optional</span></label>
-			<input
-				id={`cost-${option.id}`}
-				bind:value={option.cost}
-				inputmode="decimal"
-				placeholder="25"
-			/>
-			{#if options.length > LIMITS.minOptions}
-				<button
-					type="button"
-					class="btn-danger"
-					style="margin-top:10px"
-					onclick={() => removeOption(i)}>Remove option</button
-				>
-			{/if}
-		</div>
-	{/each}
-	{#if options.length < LIMITS.maxOptions}
-		<button type="button" onclick={addOption}>Add option</button>
+	{#if mode !== 'freeform'}
+		<label for="currency">Currency</label>
+		<select id="currency" bind:value={currency}>
+			{#each CURRENCIES as c (c)}
+				<option value={c}>{c}</option>
+			{/each}
+		</select>
+
+		<h2>Options</h2>
+		{#each options as option, i (option.id)}
+			<div class="card">
+				<label for={`label-${option.id}`}>Option {i + 1}</label>
+				<input
+					id={`label-${option.id}`}
+					bind:value={option.label}
+					maxlength={LIMITS.optionLabel}
+					placeholder="Tapas crawl in El Born"
+				/>
+				<label for={`note-${option.id}`}>Note <span class="muted">optional</span></label>
+				<input
+					id={`note-${option.id}`}
+					bind:value={option.note}
+					maxlength={LIMITS.optionNote}
+					placeholder="Central, easy to split into tables"
+				/>
+				<label for={`cost-${option.id}`}>Cost per person <span class="muted">optional</span></label>
+				<input
+					id={`cost-${option.id}`}
+					bind:value={option.cost}
+					inputmode="decimal"
+					placeholder="25"
+				/>
+				{#if options.length > LIMITS.minOptions}
+					<button
+						type="button"
+						class="btn-danger"
+						style="margin-top:10px"
+						onclick={() => removeOption(i)}>Remove option</button
+					>
+				{/if}
+			</div>
+		{/each}
+		{#if options.length < LIMITS.maxOptions}
+			<button type="button" onclick={addOption}>Add option</button>
+		{/if}
 	{/if}
 
 	<label for="closes">Auto-close submissions at <span class="muted">optional</span></label>

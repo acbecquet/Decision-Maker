@@ -10,21 +10,28 @@
 	<span class="pill pill-success">Submitted</span>
 	<h2 style="margin-top:8px">Thanks, {mine.name}</h2>
 	<p class="muted">The host approves names before anything is shared.</p>
-	<p class="label">Your ranking</p>
-	<ol style="margin:0 0 8px;padding-left:20px">
-		{#each mine.ranking as id (id)}
-			<li>{label(id)}</li>
-		{/each}
-	</ol>
-	{#if mine.vetoes.length > 0}
-		<p class="small muted">Won't work: {mine.vetoes.map(label).join(', ')}</p>
+	{#if event.mode === 'ranked'}
+		<p class="label">Your ranking</p>
+		<ol style="margin:0 0 8px;padding-left:20px">
+			{#each mine.ranking as id (id)}
+				<li>{label(id)}</li>
+			{/each}
+		</ol>
+	{:else if event.mode === 'single'}
+		<p class="label">Your pick</p>
+		<p>{label(mine.ranking[0])}</p>
 	{/if}
-	{#if mine.budget}
-		<p class="small muted">
-			Budget: {mine.budget.kind === 'limit'
-				? `up to ${formatMoney(mine.budget.amount, event.currency)}`
-				: 'no limit'}
-		</p>
+	{#if event.mode !== 'freeform'}
+		{#if mine.vetoes.length > 0}
+			<p class="small muted">Won't work: {mine.vetoes.map(label).join(', ')}</p>
+		{/if}
+		{#if mine.budget}
+			<p class="small muted">
+				Budget: {mine.budget.kind === 'limit'
+					? `up to ${formatMoney(mine.budget.amount, event.currency)}`
+					: 'no limit'}
+			</p>
+		{/if}
 	{/if}
 	{#if mine.opinion}
 		<p class="label">Your opinion</p>

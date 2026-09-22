@@ -190,7 +190,12 @@
 	{#if !host.hasDraft && event.state !== 'published'}
 		<h2>Numbers</h2>
 		{#if host.tallies}
-			<TalliesView tallies={host.tallies} options={event.options} currency={event.currency} />
+			<TalliesView
+				tallies={host.tallies}
+				options={event.options}
+				currency={event.currency}
+				mode={event.mode}
+			/>
 		{/if}
 	{/if}
 	<AnalysisSection {view} {code} {onchange} />
