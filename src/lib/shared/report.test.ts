@@ -27,6 +27,8 @@ describe('upgradeReport', () => {
 			promptVersion: 'v1'
 		});
 		expect(report).not.toHaveProperty('best');
+		expect(report).not.toHaveProperty('runnerUp');
+		expect(report).not.toHaveProperty('worst');
 	});
 
 	it('passes a version 2 report through and rejects anything else', () => {

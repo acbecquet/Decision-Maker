@@ -146,6 +146,54 @@ describe('updateResponse', () => {
 	});
 });
 
+describe('the mode rule on the server', () => {
+	it('refuses a single-choice answer that is not exactly one pick, on submit and on edit', () => {
+		const db = makeDb();
+		const event = makeEvent(db, { mode: 'single' });
+		const ids = listOptions(db, event.id).map((o) => o.id);
+		const submit = (input: ReturnType<typeof response>) =>
+			submitResponse(db, event, ids, device(1), input, { autoApprove: false });
+		expect(() => submit(response('Alex', [ids[0], ids[1]]))).toThrow(/Pick one option/);
+		expect(() => submit(response('Alex', [ids[0]], { vetoes: [ids[1]] }))).toThrow(
+			/Pick one option/
+		);
+		expect(() => submit(response('Alex', []))).toThrow(/Pick one option/);
+		const p = submit(response('Alex', [ids[0]]));
+		expect(() =>
+			updateResponse(db, event, ids, p, {
+				ranking: [ids[0], ids[1]],
+				vetoes: [],
+				budget: null,
+				opinion: '',
+				suggestion: ''
+			})
+		).toThrow(/Pick one option/);
+		expect(getMine(db, p)?.ranking).toEqual([ids[0]]);
+	});
+
+	it('refuses an opinions-only answer that carries a budget or says nothing', () => {
+		const db = makeDb();
+		const event = makeEvent(db, { mode: 'freeform', options: [] });
+		const submit = (input: ReturnType<typeof response>) =>
+			submitResponse(db, event, [], device(1), input, { autoApprove: false });
+		expect(() => submit(response('Alex', []))).toThrow(/Write your opinion/);
+		expect(() =>
+			submit(response('Alex', [], { budget: { kind: 'no_limit' }, opinion: 'Split it.' }))
+		).toThrow(/Opinions only takes no ranking/);
+		const p = submit(response('Alex', [], { opinion: 'Split it evenly.' }));
+		expect(getMine(db, p)).toMatchObject({ ranking: [], opinion: 'Split it evenly.' });
+		expect(() =>
+			updateResponse(db, event, [], p, {
+				ranking: [],
+				vetoes: [],
+				budget: null,
+				opinion: '  ',
+				suggestion: ''
+			})
+		).toThrow(/Write your opinion/);
+	});
+});
+
 describe('roster', () => {
 	it('lists names sorted case-insensitively with duplicate markers and no timestamps', () => {
 		const { db, event, ids } = setup();
