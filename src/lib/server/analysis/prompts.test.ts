@@ -184,6 +184,12 @@ describe('synthesizePrompt', () => {
 		expect(user).toContain('3 approved responses');
 		expect(user).toContain('too few responses to show a breakdown');
 		expect(user).not.toContain('First choices:');
+		const costly = synthesizePrompt({
+			...input,
+			costMattersToSome: true,
+			tallies: { approvedCount: 3, breakdown: null }
+		});
+		expect(costly.user).toContain('Cost matters to part of the group.');
 	});
 
 	it('gives a single-choice event its order by votes even when the counts are withheld', () => {

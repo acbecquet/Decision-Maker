@@ -112,7 +112,8 @@ function numbers(input: SynthesizeInput): string[] {
 	if (!tallies.breakdown) {
 		return [
 			`${tallies.approvedCount} approved responses, too few responses to show a breakdown. Do not state or estimate per-option numbers.`,
-			...byVotes
+			...byVotes,
+			...(input.costMattersToSome ? ['Cost matters to part of the group.'] : [])
 		];
 	}
 	const b = tallies.breakdown;
