@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { EVENT_CODE_ALPHABET } from '$lib/shared/constants';
+import { createEventInput } from '$lib/shared/validation';
 import { openDatabase } from './db';
 import {
 	accounts,
@@ -29,6 +30,7 @@ const input = {
 	title: 'Saturday night',
 	context: 'Dinner',
 	currency: 'EUR' as const,
+	mode: 'ranked' as const,
 	options: [
 		{ label: 'Tapas', note: '', cost: 25 },
 		{ label: 'Beach', note: 'towels', cost: null }
@@ -58,6 +60,20 @@ describe('createEvent', () => {
 		const db = openDatabase(':memory:');
 		const event = createEvent(db, { ...input, closesAt: '2026-09-18T12:00:00+02:00' }, hash);
 		expect(event.closesAt).toBe('2026-09-18T10:00:00.000Z');
+	});
+
+	it('stores the mode, defaulting to ranked', () => {
+		const db = openDatabase(':memory:');
+		const single = createEvent(db, { ...input, mode: 'single' }, hash);
+		expect(findEventByCode(db, single.code)?.mode).toBe('single');
+		expect(toEventView(single, listOptions(db, single.id)).mode).toBe('single');
+		const defaulted = createEvent(
+			db,
+			createEventInput.parse({ title: input.title, currency: 'EUR', options: input.options }),
+			hash
+		);
+		expect(findEventByCode(db, defaulted.code)?.mode).toBe('ranked');
+		expect(toEventView(defaulted, listOptions(db, defaulted.id)).mode).toBe('ranked');
 	});
 });
 
@@ -122,6 +138,7 @@ describe('toEventView', () => {
 			'code',
 			'context',
 			'currency',
+			'mode',
 			'options',
 			'rosterFinal',
 			'state',
@@ -136,6 +153,7 @@ describe('updateEvent', () => {
 		title: 'Sunday brunch',
 		context: 'Late start',
 		currency: 'USD' as const,
+		mode: 'ranked' as const,
 		options: [
 			{ label: 'Cafe', note: '', cost: 12 },
 			{ label: 'Market', note: 'Outdoor', cost: null }
@@ -166,6 +184,14 @@ describe('updateEvent', () => {
 			[0, 'Cafe', '', 12],
 			[1, 'Market', 'Outdoor', null]
 		]);
+	});
+
+	it('switches to opinions only, dropping the options', () => {
+		const db = openDatabase(':memory:');
+		const event = createEvent(db, input, hash);
+		const updated = updateEvent(db, event, { ...edit, mode: 'freeform', options: [] });
+		expect(updated.mode).toBe('freeform');
+		expect(listOptions(db, event.id)).toEqual([]);
 	});
 
 	it('stores the auto-close time as a UTC instant', () => {

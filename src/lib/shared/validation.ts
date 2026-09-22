@@ -1,5 +1,13 @@
 import { z } from 'zod';
-import { CURRENCIES, EFFORTS, LIMITS, MAX_HOST_TOKENS_PER_SIGNIN, PROVIDER_IDS } from './constants';
+import {
+	CURRENCIES,
+	EFFORTS,
+	LIMITS,
+	MAX_HOST_TOKENS_PER_SIGNIN,
+	MODES,
+	PROVIDER_IDS
+} from './constants';
+import type { EventMode } from './types';
 
 const trimmed = (max: number) => z.string().trim().max(max, `At most ${max} characters`);
 
@@ -19,16 +27,27 @@ export const optionInput = z.object({
 	cost: money.nullable().default(null)
 });
 
-export const createEventInput = z.object({
-	title: trimmed(LIMITS.title).min(1, 'Enter a title'),
-	context: trimmed(LIMITS.context).default(''),
-	currency: z.enum(CURRENCIES, 'Pick a currency'),
-	options: z
-		.array(optionInput)
-		.min(LIMITS.minOptions, 'Add at least two options')
-		.max(LIMITS.maxOptions, `At most ${LIMITS.maxOptions} options`),
-	closesAt: isoInstant.nullable().default(null)
-});
+export const createEventInput = z
+	.object({
+		title: trimmed(LIMITS.title).min(1, 'Enter a title'),
+		context: trimmed(LIMITS.context).default(''),
+		currency: z.enum(CURRENCIES, 'Pick a currency'),
+		mode: z.enum(MODES).default('ranked'),
+		options: z.array(optionInput).max(LIMITS.maxOptions, `At most ${LIMITS.maxOptions} options`),
+		closesAt: isoInstant.nullable().default(null)
+	})
+	.superRefine((v, ctx) => {
+		if (v.mode === 'freeform' && v.options.length > 0) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['options'],
+				message: 'Opinions only takes no options'
+			});
+		}
+		if (v.mode !== 'freeform' && v.options.length < LIMITS.minOptions) {
+			ctx.addIssue({ code: 'custom', path: ['options'], message: 'Add at least two options' });
+		}
+	});
 
 export const budgetInput = z
 	.union([
@@ -39,7 +58,7 @@ export const budgetInput = z
 
 export const responseInput = z.object({
 	name: trimmed(LIMITS.name).min(1, 'Enter your name'),
-	ranking: z.array(z.string().min(1)).min(1, 'Rank at least one option').max(LIMITS.maxOptions),
+	ranking: z.array(z.string().min(1)).max(LIMITS.maxOptions),
 	vetoes: z.array(z.string().min(1)).max(LIMITS.maxOptions).default([]),
 	budget: budgetInput.default(null),
 	opinion: trimmed(LIMITS.opinion).default(''),
@@ -90,6 +109,18 @@ export type ResponseInput = z.infer<typeof responseInput>;
 export type EditResponseInput = z.infer<typeof editResponseInput>;
 export type ModelsInput = z.infer<typeof modelsInput>;
 export type RunAnalysisInput = z.infer<typeof runAnalysisInput>;
+
+/** The one rule, shared by the server and the form, for what a submission may carry in each mode. */
+export function checkResponseForMode(mode: EventMode, input: EditResponseInput): string | null {
+	if (mode === 'ranked') return input.ranking.length === 0 ? 'Rank at least one option' : null;
+	if (mode === 'single') {
+		return input.ranking.length !== 1 || input.vetoes.length > 0 ? 'Pick one option' : null;
+	}
+	if (input.ranking.length > 0 || input.vetoes.length > 0 || input.budget !== null) {
+		return 'Opinions only takes no ranking';
+	}
+	return input.opinion.trim() === '' ? 'Write your opinion' : null;
+}
 
 /** Returns a problem description, or null when every id refers to a known option exactly once. */
 export function checkOptionRefs(

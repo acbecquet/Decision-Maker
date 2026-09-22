@@ -6,6 +6,7 @@ const view: ReportView = {
 	title: 'Saturday night',
 	context: '',
 	currency: 'EUR',
+	mode: 'ranked',
 	state: 'published',
 	publishedAt: '2026-09-18T12:00:00.000Z',
 	options: [
@@ -31,10 +32,13 @@ const view: ReportView = {
 		}
 	},
 	report: {
-		version: 1,
-		best: { optionId: 'o1', verdict: 'Tapas wins.', rationale: 'r', consensus: 'strong' },
-		runnerUp: { optionId: 'o2', rationale: 'r' },
-		worst: { optionId: 'o3', rationale: 'r' },
+		version: 2,
+		mode: 'ranked',
+		decision: {
+			best: { optionId: 'o1', verdict: 'Tapas wins.', rationale: 'r', consensus: 'strong' },
+			runnerUp: { optionId: 'o2', rationale: 'r' },
+			worst: { optionId: 'o3', rationale: 'r' }
+		},
 		unexpected: { kind: 'suggestion', optionId: null, title: 'A flamenco show', rationale: 'r' },
 		themes: [],
 		stillToSettle: [],

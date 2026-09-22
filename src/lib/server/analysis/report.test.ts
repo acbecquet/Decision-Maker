@@ -35,8 +35,14 @@ const output = {
 
 describe('buildReport', () => {
 	it('embeds quote text, dedupes ids, and drops cost-tagged or unknown ids', () => {
-		const report = buildReport(output, points, quotable, options, meta);
-		expect(report.version).toBe(1);
+		const report = buildReport(output, points, quotable, options, 'ranked', meta);
+		expect(report.version).toBe(2);
+		expect(report.mode).toBe('ranked');
+		expect(report.decision).toMatchObject({
+			best: { optionId: 'o1', verdict: 'Tapas.', consensus: 'strong' },
+			runnerUp: { optionId: 'o2' },
+			worst: { optionId: 'o2' }
+		});
 		expect(report.themes[0].quotes).toEqual([
 			{ pointId: 'p1', text: 'One person wants somewhere central.' }
 		]);
@@ -60,6 +66,7 @@ describe('buildReport', () => {
 			points,
 			quotable,
 			options,
+			'ranked',
 			meta
 		);
 		expect(withBadOption.unexpected).toBeNull();
@@ -71,6 +78,7 @@ describe('buildReport', () => {
 			points,
 			quotable,
 			options,
+			'ranked',
 			meta
 		);
 		expect(suggestion.unexpected?.kind).toBe('suggestion');
@@ -86,6 +94,7 @@ describe('buildReport', () => {
 			points,
 			quotable,
 			options,
+			'ranked',
 			meta
 		);
 		expect(dashed.summary).toBe('Tapas it is-decide the time later-soon.');
@@ -100,6 +109,7 @@ describe('buildReport', () => {
 				points,
 				quotable,
 				options,
+				'ranked',
 				meta
 			)
 		).toThrow(/unknown option/);

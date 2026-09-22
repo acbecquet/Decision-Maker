@@ -22,6 +22,13 @@ export const CURRENCIES = [
 ] as const;
 export type Currency = (typeof CURRENCIES)[number];
 
+export const MODES = ['ranked', 'single', 'freeform'] as const;
+export const MODE_LABELS = {
+	ranked: 'Rank the options',
+	single: 'Pick one option',
+	freeform: 'Opinions only'
+} as const;
+
 export const LIMITS = {
 	title: 80,
 	context: 200,

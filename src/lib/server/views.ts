@@ -5,7 +5,7 @@ import { notFound } from './errors';
 import { findEventByCode, listOptions, refreshState, toEventView } from './events';
 import { countByStatus, countSubmitted, getMine, listRoster } from './participants';
 import { isHost, participantFromRequest } from './roles';
-import type { Report, ReportView } from '$lib/shared/report';
+import { upgradeReport, type ReportView } from '$lib/shared/report';
 import type { EventPageView } from '$lib/shared/types';
 
 /** Loads the event by public code, applying a passed auto-close deadline on the way. */
@@ -52,15 +52,15 @@ export function buildReportView(
 	request: Request,
 	accountId: string | null = null
 ): ReportView {
-	const report = event.report as Report | null;
+	const report = upgradeReport(event.report);
 	const host = isHost(event, request, accountId);
 	const published = event.state === 'published';
-	if (!report || report.version !== 1 || !event.aggregates || !(host || published))
-		throw notFound('No report');
+	if (!report || !event.aggregates || !(host || published)) throw notFound('No report');
 	return {
 		title: event.title,
 		context: event.context,
 		currency: event.currency,
+		mode: event.mode,
 		state: event.state,
 		publishedAt: event.publishedAt,
 		options: toEventView(event, listOptions(db, event.id)).options,

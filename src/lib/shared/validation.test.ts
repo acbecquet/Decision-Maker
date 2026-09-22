@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	checkOptionRefs,
+	checkResponseForMode,
 	createEventInput,
 	editResponseInput,
 	modelsInput,
@@ -60,9 +61,9 @@ describe('createEventInput', () => {
 });
 
 describe('responseInput', () => {
-	it('requires a name and at least one ranked option', () => {
+	it('requires a name and leaves an empty ranking to the mode rule', () => {
 		expect(responseInput.safeParse({ name: '', ranking: ['a'] }).success).toBe(false);
-		expect(responseInput.safeParse({ name: 'Alex', ranking: [] }).success).toBe(false);
+		expect(responseInput.safeParse({ name: 'Alex', ranking: [] }).success).toBe(true);
 	});
 
 	it('applies defaults for the optional fields', () => {
@@ -147,6 +148,53 @@ describe('analysis inputs', () => {
 		expect(runAnalysisInput.safeParse({ provider: 'fake', key: 'demo', model: 'm' }).success).toBe(
 			true
 		);
+	});
+});
+
+describe('mode rules', () => {
+	const base = { title: 'T', context: '', currency: 'EUR' as const, closesAt: null };
+	const two = [
+		{ label: 'Yes', note: '', cost: null },
+		{ label: 'No', note: '', cost: null }
+	];
+
+	it('defaults the mode to ranked and needs two options unless opinions only', () => {
+		expect(createEventInput.parse({ ...base, options: two }).mode).toBe('ranked');
+		expect(createEventInput.safeParse({ ...base, mode: 'single', options: two }).success).toBe(
+			true
+		);
+		expect(
+			createEventInput.safeParse({ ...base, mode: 'ranked', options: [two[0]] }).error?.issues[0]
+				?.message
+		).toBe('Add at least two options');
+		expect(createEventInput.safeParse({ ...base, mode: 'freeform', options: [] }).success).toBe(
+			true
+		);
+		expect(
+			createEventInput.safeParse({ ...base, mode: 'freeform', options: two }).error?.issues[0]
+				?.message
+		).toBe('Opinions only takes no options');
+	});
+
+	it('checks a submission against the mode', () => {
+		const answer = { ranking: ['a'], vetoes: [], budget: null, opinion: 'ok', suggestion: '' };
+		expect(checkResponseForMode('ranked', answer)).toBeNull();
+		expect(checkResponseForMode('ranked', { ...answer, ranking: [] })).toBe(
+			'Rank at least one option'
+		);
+		expect(checkResponseForMode('single', answer)).toBeNull();
+		expect(checkResponseForMode('single', { ...answer, ranking: ['a', 'b'] })).toBe(
+			'Pick one option'
+		);
+		expect(checkResponseForMode('single', { ...answer, vetoes: ['b'] })).toBe('Pick one option');
+		expect(checkResponseForMode('freeform', { ...answer, ranking: [] })).toBeNull();
+		expect(checkResponseForMode('freeform', answer)).toBe('Opinions only takes no ranking');
+		expect(checkResponseForMode('freeform', { ...answer, ranking: [], opinion: ' ' })).toBe(
+			'Write your opinion'
+		);
+		expect(
+			checkResponseForMode('freeform', { ...answer, ranking: [], budget: { kind: 'no_limit' } })
+		).toBe('Opinions only takes no ranking');
 	});
 });
 

@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `mode` text DEFAULT 'ranked' NOT NULL;

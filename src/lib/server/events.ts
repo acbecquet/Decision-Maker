@@ -33,6 +33,7 @@ export function createEvent(
 				title: input.title,
 				context: input.context,
 				currency: input.currency,
+				mode: input.mode,
 				hostTokenHash,
 				accountId,
 				closesAt: input.closesAt ? toIso(input.closesAt) : null,
@@ -40,18 +41,7 @@ export function createEvent(
 				createdAt: now.toISOString()
 			})
 			.run();
-		tx.insert(options)
-			.values(
-				input.options.map((o, position) => ({
-					id: newId(),
-					eventId: id,
-					position,
-					label: o.label,
-					note: o.note,
-					costPerPerson: o.cost
-				}))
-			)
-			.run();
+		insertOptions(tx, id, input);
 	});
 	return getEventById(db, id);
 }
@@ -63,6 +53,7 @@ export function createEvent(
  * parsing is honoured, and the host token hash is untouched so the creating device stays the host.
  * A passed auto-close deadline is applied first, so the guard does not depend on the caller.
  * Option rows get fresh ids on every save, which is safe only because no response can refer to them yet.
+ * An opinions-only event has no options, so the insert is skipped rather than called with no rows.
  */
 export function updateEvent(db: Db, event: EventRow, input: CreateEventInput): EventRow {
 	return db.transaction((tx) => {
@@ -73,30 +64,37 @@ export function updateEvent(db: Db, event: EventRow, input: CreateEventInput): E
 				?.n ?? 0;
 		if (submitted > 0) throw conflict('Someone has already submitted, so the event cannot change');
 		tx.delete(options).where(eq(options.eventId, current.id)).run();
-		tx.insert(options)
-			.values(
-				input.options.map((o, position) => ({
-					id: newId(),
-					eventId: current.id,
-					position,
-					label: o.label,
-					note: o.note,
-					costPerPerson: o.cost
-				}))
-			)
-			.run();
+		insertOptions(tx, current.id, input);
 		tx.update(events)
 			.set({
 				code: newEventCode(),
 				title: input.title,
 				context: input.context,
 				currency: input.currency,
+				mode: input.mode,
 				closesAt: input.closesAt ? toIso(input.closesAt) : null
 			})
 			.where(eq(events.id, current.id))
 			.run();
 		return getEventById(tx, current.id);
 	});
+}
+
+/** Writes the event's options in form order. An opinions-only event has none, so nothing is written. */
+function insertOptions(tx: DbLike, eventId: string, input: CreateEventInput): void {
+	if (input.options.length === 0) return;
+	tx.insert(options)
+		.values(
+			input.options.map((o, position) => ({
+				id: newId(),
+				eventId,
+				position,
+				label: o.label,
+				note: o.note,
+				costPerPerson: o.cost
+			}))
+		)
+		.run();
 }
 
 export function getEventById(db: DbLike, id: string): EventRow {
@@ -162,6 +160,7 @@ export function toEventView(event: EventRow, opts: OptionRow[]): EventView {
 		title: event.title,
 		context: event.context,
 		currency: event.currency,
+		mode: event.mode,
 		state: event.state,
 		rosterFinal: event.rosterFinal,
 		closesAt: event.closesAt,

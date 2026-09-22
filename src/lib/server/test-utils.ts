@@ -17,6 +17,7 @@ export function makeEvent(db: Db, overrides: Partial<CreateEventInput> = {}): Ev
 			title: 'Saturday night',
 			context: '',
 			currency: 'EUR',
+			mode: 'ranked',
 			options: [
 				{ label: 'Tapas', note: '', cost: 25 },
 				{ label: 'Beach', note: '', cost: 15 },

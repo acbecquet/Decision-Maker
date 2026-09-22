@@ -83,7 +83,8 @@ describe('startAnalysis', () => {
 		expect(after.model).toBe('fake-fast');
 		expect(after.promptVersion).toBe('v1');
 		expect(after.report).toMatchObject({
-			version: 1,
+			version: 2,
+			mode: 'ranked',
 			provider: 'fake',
 			model: 'fake-fast',
 			promptVersion: 'v1'
@@ -260,7 +261,7 @@ describe('startAnalysis', () => {
 		const { done } = startAnalysis(db, event, input, stub);
 		await done;
 		const after = getEventById(db, event.id);
-		expect(after.report).toMatchObject({ version: 1 });
+		expect(after.report).toMatchObject({ version: 2, mode: 'ranked' });
 		const points = db
 			.select()
 			.from(anonymizedPoints)

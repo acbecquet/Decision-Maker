@@ -1,6 +1,6 @@
 import { ANALYSIS, RULES } from '$lib/shared/constants';
 import type { Point, ProviderId, Report } from '$lib/shared/report';
-import type { Aggregates, OptionView } from '$lib/shared/types';
+import type { Aggregates, EventMode, OptionView } from '$lib/shared/types';
 import type { SynthesizeOutput } from './schemas';
 
 export type ReportMeta = {
@@ -30,6 +30,7 @@ export function buildReport(
 	points: Point[],
 	quotable: Set<string>,
 	options: OptionView[],
+	mode: EventMode,
 	meta: ReportMeta
 ): Report {
 	const known = new Set(options.map((o) => o.id));
@@ -59,14 +60,17 @@ export function buildReport(
 		};
 	}
 	return {
-		version: 1,
-		best: {
-			...output.best,
-			verdict: plain(output.best.verdict),
-			rationale: plain(output.best.rationale)
+		version: 2,
+		mode,
+		decision: {
+			best: {
+				...output.best,
+				verdict: plain(output.best.verdict),
+				rationale: plain(output.best.rationale)
+			},
+			runnerUp: { ...output.runnerUp, rationale: plain(output.runnerUp.rationale) },
+			worst: { ...output.worst, rationale: plain(output.worst.rationale) }
 		},
-		runnerUp: { ...output.runnerUp, rationale: plain(output.runnerUp.rationale) },
-		worst: { ...output.worst, rationale: plain(output.worst.rationale) },
 		unexpected,
 		themes,
 		stillToSettle: output.stillToSettle.map(plain),

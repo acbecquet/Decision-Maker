@@ -273,7 +273,15 @@ async function runJob(
 		'synthesize',
 		SYNTHESIZE_SCHEMA,
 		MAX_TOKENS.synthesize,
-		(raw) => buildReport(synthesizeOutput.parse(raw), points, quotableIds(groups), options, meta)
+		(raw) =>
+			buildReport(
+				synthesizeOutput.parse(raw),
+				points,
+				quotableIds(groups),
+				options,
+				event.mode,
+				meta
+			)
 	);
 
 	db.transaction((tx) => {

@@ -1,3 +1,6 @@
+import { MODES } from './constants';
+
+export type EventMode = (typeof MODES)[number];
 export type EventState = 'open' | 'closed' | 'published';
 export type ParticipantStatus = 'pending' | 'approved' | 'rejected';
 export type PointType = 'reason' | 'condition' | 'constraint' | 'suggestion' | 'cost';
@@ -43,6 +46,7 @@ export type EventView = {
 	title: string;
 	context: string;
 	currency: string;
+	mode: EventMode;
 	state: EventState;
 	rosterFinal: boolean;
 	closesAt: string | null;

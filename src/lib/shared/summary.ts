@@ -13,14 +13,15 @@ export function copySummary(view: ReportView): string {
 			: `${name(id)} (${formatMoney(cost, view.currency)})`;
 	};
 	const r = view.report;
+	const decision = r.decision!;
 	const lines = [
 		view.title,
 		'',
 		r.summary,
 		'',
-		`Best: ${priced(r.best.optionId)}`,
-		`Runner-up: ${priced(r.runnerUp.optionId)}`,
-		`Worst: ${priced(r.worst.optionId)}`
+		`Best: ${priced(decision.best.optionId)}`,
+		`Runner-up: ${priced(decision.runnerUp.optionId)}`,
+		`Worst: ${priced(decision.worst.optionId)}`
 	];
 	if (r.unexpected) lines.push(`Unexpected: ${r.unexpected.title}`);
 	const cost = view.tallies.breakdown?.cost;

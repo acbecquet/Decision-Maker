@@ -16,6 +16,7 @@
 		moderate: 'Moderate consensus',
 		split: 'Split'
 	} as const;
+	const decision = $derived(view.report.decision!);
 	const published = $derived(
 		view.publishedAt
 			? new Date(view.publishedAt).toLocaleDateString(undefined, {
@@ -37,32 +38,32 @@
 	<div class="card highlight">
 		<p class="label" style="margin-top:0">Best option</p>
 		<p style="margin:0 0 6px">
-			<strong>{name(view.report.best.optionId)}</strong>
-			{#if price(view.report.best.optionId)}<span class="muted small"
-					>{price(view.report.best.optionId)}</span
+			<strong>{name(decision.best.optionId)}</strong>
+			{#if price(decision.best.optionId)}<span class="muted small"
+					>{price(decision.best.optionId)}</span
 				>{/if}
 		</p>
-		<span class="pill">{consensus[view.report.best.consensus]}</span>
-		<p style="margin:10px 0 4px"><strong>{view.report.best.verdict}</strong></p>
-		<p style="margin:0">{view.report.best.rationale}</p>
+		<span class="pill">{consensus[decision.best.consensus]}</span>
+		<p style="margin:10px 0 4px"><strong>{decision.best.verdict}</strong></p>
+		<p style="margin:0">{decision.best.rationale}</p>
 	</div>
 
 	<div class="pair">
 		<div class="card">
 			<p class="label" style="margin-top:0">Runner-up</p>
-			<p style="margin:0"><strong>{name(view.report.runnerUp.optionId)}</strong></p>
-			{#if price(view.report.runnerUp.optionId)}<p class="small muted" style="margin:0 0 6px">
-					{price(view.report.runnerUp.optionId)}
+			<p style="margin:0"><strong>{name(decision.runnerUp.optionId)}</strong></p>
+			{#if price(decision.runnerUp.optionId)}<p class="small muted" style="margin:0 0 6px">
+					{price(decision.runnerUp.optionId)}
 				</p>{/if}
-			<p class="small" style="margin:0">{view.report.runnerUp.rationale}</p>
+			<p class="small" style="margin:0">{decision.runnerUp.rationale}</p>
 		</div>
 		<div class="card">
 			<p class="label" style="margin-top:0">Worst</p>
-			<p style="margin:0"><strong>{name(view.report.worst.optionId)}</strong></p>
-			{#if price(view.report.worst.optionId)}<p class="small muted" style="margin:0 0 6px">
-					{price(view.report.worst.optionId)}
+			<p style="margin:0"><strong>{name(decision.worst.optionId)}</strong></p>
+			{#if price(decision.worst.optionId)}<p class="small muted" style="margin:0 0 6px">
+					{price(decision.worst.optionId)}
 				</p>{/if}
-			<p class="small" style="margin:0">{view.report.worst.rationale}</p>
+			<p class="small" style="margin:0">{decision.worst.rationale}</p>
 		</div>
 	</div>
 

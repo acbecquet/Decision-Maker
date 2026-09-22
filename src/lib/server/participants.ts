@@ -7,6 +7,7 @@ import { getEventById } from './events';
 import type { Budget, MineView, ParticipantStatus, RosterRow } from '$lib/shared/types';
 import {
 	checkOptionRefs,
+	checkResponseForMode,
 	type EditResponseInput,
 	type ResponseInput
 } from '$lib/shared/validation';
@@ -61,6 +62,8 @@ export function submitResponse(
 	if (getEventById(db, event.id).state !== 'open') throw conflict('Submissions are closed');
 	const problem = checkOptionRefs(input.ranking, input.vetoes, optionIds);
 	if (problem) throw badRequest(problem);
+	const modeProblem = checkResponseForMode(event.mode, input);
+	if (modeProblem) throw badRequest(modeProblem);
 	if (findParticipantByDevice(db, event.id, deviceTokenHash)) {
 		throw conflict('This device already submitted');
 	}
@@ -95,6 +98,8 @@ export function updateResponse(
 	if (getEventById(db, event.id).state !== 'open') throw conflict('Submissions are closed');
 	const problem = checkOptionRefs(input.ranking, input.vetoes, optionIds);
 	if (problem) throw badRequest(problem);
+	const modeProblem = checkResponseForMode(event.mode, input);
+	if (modeProblem) throw badRequest(modeProblem);
 	db.update(responses)
 		.set(responseColumns(input, now.toISOString()))
 		.where(eq(responses.participantId, participant.id))

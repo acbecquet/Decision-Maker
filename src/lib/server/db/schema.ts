@@ -1,5 +1,11 @@
 import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import type { Aggregates, EventState, ParticipantStatus, PointType } from '../../shared/types';
+import type {
+	Aggregates,
+	EventMode,
+	EventState,
+	ParticipantStatus,
+	PointType
+} from '../../shared/types';
 
 export const accounts = sqliteTable('accounts', {
 	id: text('id').primaryKey(),
@@ -29,6 +35,7 @@ export const events = sqliteTable('events', {
 	title: text('title').notNull(),
 	context: text('context').notNull().default(''),
 	currency: text('currency').notNull(),
+	mode: text('mode').$type<EventMode>().notNull().default('ranked'),
 	state: text('state').$type<EventState>().notNull().default('open'),
 	rosterFinal: integer('roster_final', { mode: 'boolean' }).notNull().default(false),
 	hostTokenHash: text('host_token_hash').notNull(),

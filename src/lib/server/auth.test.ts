@@ -204,6 +204,7 @@ describe('claiming and listing events', () => {
 			title: 'Saturday night',
 			context: '',
 			currency: 'EUR' as const,
+			mode: 'ranked' as const,
 			options: [
 				{ label: 'Tapas', note: '', cost: 25 },
 				{ label: 'Beach', note: '', cost: null }

@@ -14,6 +14,7 @@ const input = {
 	title: 'Axis dinner',
 	context: 'Date and dishes',
 	currency: 'USD' as const,
+	mode: 'ranked' as const,
 	options: [
 		{ label: 'Monday', note: '', cost: null },
 		{ label: 'Friday', note: '', cost: null }
