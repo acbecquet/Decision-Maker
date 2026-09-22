@@ -27,7 +27,7 @@ So `deploy/docker-compose.yml` names the project `decision-maker` explicitly, `d
 3. `bash deploy/deploy.sh` creates the `edge` network if it is missing, builds, starts, and waits for health.
 4. Add the DNS record below and wait for it to resolve.
 5. In Podium's checkout, pull the Caddyfile that carries the `decide.acb-apps.com` block and recreate Caddy with `docker compose -f deploy/docker-compose.yml up -d caddy`.
-6. Schedule nightly snapshots: `15 4 * * * /home/acbecquet/decision-maker/deploy/backup.sh >> /home/acbecquet/decision-maker/deploy/logs/backup.log 2>&1`
+6. Schedule nightly snapshots: `15 4 * * * bash /home/acbecquet/decision-maker/deploy/backup.sh >> /home/acbecquet/decision-maker/deploy/logs/backup.log 2>&1`
 
 ## Deploy a new version
 

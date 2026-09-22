@@ -6,7 +6,7 @@
 # self-contained file that leaves no -wal or -shm sidecar when opened, and
 # integrity-checked, and only then renamed into place. A run that fails or is
 # killed leaves no file that looks like a snapshot. Cron on the hub:
-#   15 4 * * * /home/acbecquet/decision-maker/deploy/backup.sh >> /home/acbecquet/decision-maker/deploy/logs/backup.log 2>&1
+#   15 4 * * * bash /home/acbecquet/decision-maker/deploy/backup.sh >> /home/acbecquet/decision-maker/deploy/logs/backup.log 2>&1
 set -euo pipefail
 cd "$(dirname "$0")/.."
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
