@@ -25,7 +25,7 @@
 
 <dialog bind:this={dialog} aria-labelledby="publish-dialog-title">
 	<h2 id="publish-dialog-title" style="margin-top:0">Publish results?</h2>
-	<p>Raw rankings and opinions are deleted, and approved participants see the report.</p>
+	<p>Raw rankings and opinions are deleted, and anyone with the link sees the report.</p>
 	<div class="stack">
 		<button type="button" class="btn-primary btn-block" disabled={busy} onclick={confirm}
 			>Publish</button

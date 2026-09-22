@@ -21,7 +21,7 @@ In scope for this project:
 - One link is shared with the group.
 - Participants open the link, enter a name, rank the options, optionally flag options that will not work for them, optionally set the most they would comfortably spend, write an opinion, and optionally suggest an option not listed.
 - The host approves or rejects names, closes submissions, connects a model provider with their own key, runs the analysis, reads a draft, and publishes.
-- Approved participants open the same link and read the report.
+- Anyone with the link opens it and reads the report once it is published.
 - Hosts may optionally sign in by email magic link to see their events from any device.
 
 Out of scope for this project:
@@ -44,7 +44,7 @@ Out of scope for this project:
 | Host role          | The device that created the event holds a host token. Signing in extends host access to other devices.                                                                                           |
 | Host sign-in       | Email magic link.                                                                                                                                                                                |
 | Model access       | Anthropic and OpenAI by pasted API key, OpenRouter by one-tap OAuth PKCE connect or pasted key. The key stays in the host's browser and is passed to the server only for the duration of a call. |
-| Report delivery    | Approved participants reopen the same link. The host announces it in the group chat.                                                                                                             |
+| Report delivery    | Anyone with the link reopens it once published (changed 2026-09-22 from approved devices only). The host announces it in the group chat.                                                        |
 | Retention          | Raw rankings and opinions are purged the moment the host publishes.                                                                                                                              |
 | Write-ins          | Participants may suggest an option as text. Suggestions feed the analysis but are not added to the ranking list.                                                                                 |
 | Close              | Closing submissions is final. There is no reopen.                                                                                                                                                |
@@ -158,7 +158,7 @@ The key stays in localStorage on the host's device.
 
 "Run analysis" starts the job and shows progress such as "rewriting 12 of 30" and "synthesizing".
 On success the host can read the full draft report, re-run with the same or another model, or publish.
-The publish dialog states that all raw rankings and opinions will be deleted and that approved participants will see the report.
+The publish dialog states that all raw rankings and opinions will be deleted and that anyone with the link will see the report.
 
 ### 6.5 Published
 
@@ -221,9 +221,7 @@ Submit creates the participant token and the participant row in the same request
   Edits are allowed until close and update the response in place.
 - Closed, submitted: "Submissions are closed, results are on the way."
 - Closed, no submission: "Submissions are closed."
-- Published, approved: the report.
-- Published, pending or rejected: "The host shared results with the approved group."
-  The message gives no hint about which state the person is in.
+- Published: the report, for anyone with the link (changed 2026-09-22; it was approved devices only, which locked out anyone on a new phone or after the move to a new domain).
 
 ### 7.3 Device lock in practice
 
@@ -435,7 +433,7 @@ Three layers of tests:
 - Adapter tests with mocked HTTP for each provider covering model listing, structured output parsing, the JSON-in-text fallback, and rate-limit retry, plus recorded fixtures of real model output captured once with a real key and replayed offline.
 - End-to-end tests with Playwright against the real server in a real browser at a phone viewport.
   One host context and many participant contexts act as separate devices and run the whole story: create with costs, submit, count-only while open, approve and reject, close, tallies appear and the roster locks, connect the fake provider, run, watch progress, read the draft, publish.
-  Assertions: approved devices see the report, pending and rejected do not, raw rows are gone from the database, and no HTTP response during the entire run contained opinion text.
+  Assertions: every device with the link sees the report once published, raw rows are gone from the database, and no HTTP response during the entire run contained opinion text.
   Separate scenarios cover device lock, edit until close, suppression, auto-close with pending names, and magic-link sign-in through a test mail sink.
   Screenshots are captured on failure in Phase 1; the step-by-step capture for the pixel pass is part of Phase 4.
 

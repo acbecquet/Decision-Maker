@@ -73,6 +73,6 @@
 	<p class="muted">Loading</p>
 {:else}
 	<div class="card">
-		<p>The host shared results with the approved group.</p>
+		<p>No report for this event.</p>
 	</div>
 {/if}

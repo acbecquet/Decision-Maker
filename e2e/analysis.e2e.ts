@@ -47,7 +47,7 @@ async function closedEvent(request: APIRequestContext, count = names.length) {
 	return { code, hostToken, host, devices };
 }
 
-test('the host runs the fake analysis, reads the draft, publishes, and only approved devices see the report', async ({
+test('the host runs the fake analysis, reads the draft, publishes, and everyone with the link sees the report', async ({
 	browser,
 	request
 }) => {
@@ -104,17 +104,16 @@ test('the host runs the fake analysis, reads the draft, publishes, and only appr
 	await expect(ana.page.getByText('Submissions are closed')).toHaveCount(0);
 	await ana.context.close();
 
+	// A pending or rejected device and a device that never submitted read the same report.
 	const fay = await openAsParticipant(browser, code, devices[5]);
-	await expect(
-		fay.page.getByText('The host shared results with the approved group.')
-	).toBeVisible();
-	await expect(fay.page.getByTestId('report')).toHaveCount(0);
+	await expect(fay.page.getByTestId('report')).toBeVisible();
+	await expect(fay.page.getByTestId('report')).toContainText('Best option');
+	await expect(fay.page.getByRole('button', { name: 'Copy summary' })).toHaveCount(0);
 	await fay.context.close();
 
 	const stranger = await openAsParticipant(browser, code, token());
-	await expect(
-		stranger.page.getByText('The host shared results with the approved group.')
-	).toBeVisible();
+	await expect(stranger.page.getByTestId('report')).toBeVisible();
+	await expect(stranger.page.getByTestId('report')).toContainText('What people said');
 	await stranger.context.close();
 	await context.close();
 });

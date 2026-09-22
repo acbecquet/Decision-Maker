@@ -29,7 +29,7 @@ export type Report = {
 	generatedAt: string;
 };
 
-/** What the report endpoint returns to a host (draft or published) or an approved participant (published). */
+/** What the report endpoint returns to a host (draft or published) or anyone with the link (published). */
 export type ReportView = {
 	title: string;
 	context: string;

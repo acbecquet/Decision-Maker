@@ -43,8 +43,8 @@ export function buildEventPageView(
 }
 
 /**
- * The report for whoever may see it: the host at any time once a draft exists, an approved
- * participant once published. Everyone else gets the same 404, which reveals nothing about their status.
+ * The report for whoever may see it: the host at any time once a draft exists, anyone with the
+ * link once published. Before that, everyone else gets the same 404.
  */
 export function buildReportView(
 	db: Db,
@@ -54,9 +54,8 @@ export function buildReportView(
 ): ReportView {
 	const report = event.report as Report | null;
 	const host = isHost(event, request, accountId);
-	const participant = host ? undefined : participantFromRequest(db, event, request);
-	const approvedReader = event.state === 'published' && participant?.status === 'approved';
-	if (!report || report.version !== 1 || !event.aggregates || !(host || approvedReader))
+	const published = event.state === 'published';
+	if (!report || report.version !== 1 || !event.aggregates || !(host || published))
 		throw notFound('No report');
 	return {
 		title: event.title,
