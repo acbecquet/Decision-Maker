@@ -117,4 +117,24 @@ test.describe('creating an event', () => {
 		await page.goto(`/e/${second}/edit`);
 		await expect(page).toHaveURL(new RegExp(`/e/${second}$`));
 	});
+
+	test('editing keeps the voting mode', async ({ page, request }) => {
+		await page.goto('/');
+		await page.getByLabel('What are you deciding?').fill('Beach or pool?');
+		await page.getByLabel('Pick one option').check();
+		await page.getByLabel('Option 1').fill('Beach');
+		await page.getByLabel('Option 2').fill('Pool');
+		await page.getByRole('button', { name: 'Create event' }).click();
+		await expect(page).toHaveURL(/\?created=1$/);
+
+		await page.getByRole('button', { name: 'Edit event' }).click();
+		await expect(page.getByLabel('Pick one option')).toBeChecked();
+		await page.getByLabel('What are you deciding?').fill('Beach or pool, really?');
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect(page).toHaveURL(/\?created=1$/);
+		const code = new URL(page.url()).pathname.split('/').pop() as string;
+
+		const view = await (await request.get(`/api/events/${code}`)).json();
+		expect(view.event).toMatchObject({ mode: 'single', title: 'Beach or pool, really?' });
+	});
 });
