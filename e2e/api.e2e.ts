@@ -637,14 +637,14 @@ test.describe('analysis API', () => {
 		});
 		expect(approved.status()).toBe(200);
 		expect((await approved.json()).report.best.optionId).toBe(draftBody.report.best.optionId);
-		expect(
-			(
-				await request.get(`/api/events/${code}/report`, {
-					headers: { 'x-participant-token': devices[5] }
-				})
-			).status()
-		).toBe(404);
-		expect((await request.get(`/api/events/${code}/report`)).status()).toBe(404);
+		// Once published, a pending or rejected device and a request with no token at all read it too.
+		const unapproved = await request.get(`/api/events/${code}/report`, {
+			headers: { 'x-participant-token': devices[5] }
+		});
+		expect(unapproved.status()).toBe(200);
+		const tokenless = await request.get(`/api/events/${code}/report`);
+		expect(tokenless.status()).toBe(200);
+		expect((await tokenless.json()).report.best.optionId).toBe(draftBody.report.best.optionId);
 		expect(
 			(await request.post(`/api/events/${code}/analysis`, { headers: host, data: run })).status()
 		).toBe(409);
