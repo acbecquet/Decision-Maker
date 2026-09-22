@@ -19,7 +19,7 @@ In scope for this project:
 
 - A host creates an event with a title, optional context, a currency, and 2 to 12 options, each with an optional per-person cost.
 - One link is shared with the group.
-- Participants open the link, enter a name, rank the options, optionally flag options that will not work for them, optionally set the most they would comfortably spend, write an opinion, and optionally suggest an option not listed.
+- Participants open the link, enter a name, rank the options (or pick one, or only write, by the event's mode, section 6.9), optionally flag options that will not work for them, optionally set the most they would comfortably spend, write an opinion, and optionally suggest an option not listed.
 - The host approves or rejects names, closes submissions, connects a model provider with their own key, runs the analysis, reads a draft, and publishes.
 - Anyone with the link opens it and reads the report once it is published.
 - Hosts may optionally sign in by email magic link to see their events from any device.
@@ -47,6 +47,7 @@ Out of scope for this project:
 | Report delivery    | Anyone with the link reopens it once published (changed 2026-09-22 from approved devices only). The host announces it in the group chat.                                                        |
 | Retention          | Raw rankings and opinions are purged the moment the host publishes.                                                                                                                              |
 | Write-ins          | Participants may suggest an option as text. Suggestions feed the analysis but are not added to the ranking list.                                                                                 |
+| Voting mode        | Ranked choice by default; single choice or opinions only can be chosen at creation and are fixed once someone has submitted (section 6.9, added 2026-09-22).
 | Close              | Closing submissions is final. There is no reopen.                                                                                                                                                |
 | Architecture       | SvelteKit with TypeScript, SQLite through Drizzle, one Node process, one Docker image.                                                                                                           |
 | Hosting            | Since 2026-09-21 the hub VM behind Podium Chasers' Caddy, one Docker Compose stack, a named volume, nightly snapshots; Fly.io with Litestream was the original target and is retired.            |
@@ -188,6 +189,23 @@ The QR code encodes the bare `/e/{code}` link, which scans more easily and lands
 The event page is served with the title in its HTML, as the document title and as the Open Graph title and canonical URL, so a messenger that unfurls the link on a phone shows what the decision is about before the page's scripts run.
 That is the title alone, with no description line and no image; a code that matches no event carries no such metadata.
 The page still decides who the visitor is on the client, from the tokens in browser storage, exactly as before.
+
+### 6.9 Voting modes (added 2026-09-22)
+
+An event has one of three modes, chosen on the create form and editable only while nobody has submitted, like everything else about an event.
+
+- Ranked choice, the default and the only mode before this change: everything above applies unchanged.
+- Single choice: each person picks exactly one option and cannot flag options as not working; budget, opinion, and suggestion work as in ranked choice.
+  The tallies show the votes per option and the cost numbers, and nothing about rank positions, vetoes, or head-to-head wins.
+  The report's best option is the one with the most votes, with a tie explained in the rationale; the runner-up and the worst are the next and the fewest votes.
+- Opinions only: the event has no options at all, so no currency, no costs, no budget, and no suggestion field; each person gives a name and an opinion, and the opinion is required.
+  The tallies are the response count alone, with no breakdown at any size, and the report has no best, runner-up, worst, or numbers: it is the themes, the quotes, what is still to settle, and the summary.
+
+A submission is validated against the event's mode on the server and on the client with one shared rule, so a ranked payload cannot land in a single-choice event or the other way round.
+Rankings are stored the same way in every mode: a single-choice pick is a ranking of one, and an opinions-only answer has an empty ranking.
+Aggregation is the same arithmetic in every mode; the presentation, the prompts, and the report shape are what differ.
+The stored report becomes version 2, which carries the mode and makes the decision block (best, runner-up, worst) optional; a version 1 report is upgraded on read as a ranked decision, so nothing already published changes.
+The suppression rules of section 8.4 apply unchanged wherever numbers are shown.
 
 ## 7. Participant experience
 
@@ -385,7 +403,7 @@ Nine tables in one SQLite file, managed by Drizzle migrations.
 - `accounts`: id, email (unique), created_at.
 - `magic_links`: token_hash, nonce_hash (the hash of the browser-binding cookie), email, expires_at, used_at.
 - `sessions`: token_hash, account_id, expires_at.
-- `events`: id, code (unique), title, context, currency, state, roster_final, host_token_hash, account_id (nullable), closes_at (nullable), closed_at, published_at, expires_at, provider, model, prompt_version, aggregates JSON, report JSON, created_at.
+- `events`: id, code (unique), title, context, currency, mode (ranked, single, or freeform; default ranked), state, roster_final, host_token_hash, account_id (nullable), closes_at (nullable), closed_at, published_at, expires_at, provider, model, prompt_version, aggregates JSON, report JSON, created_at.
 - `options`: id, event_id, position, label, note, cost_per_person (nullable).
 - `participants`: id, event_id, display_name, device_token_hash, status, created_at.
 - `responses`: participant_id (primary key), ranking JSON of option ids in order, vetoes JSON, budget_kind (`limit`, `no_limit`, or null), budget_amount (nullable), opinion, suggestion, updated_at.
