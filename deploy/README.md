@@ -90,6 +90,12 @@ rm deploy/backups/<source>.db
 
 Attaching the event to an account afterwards is one update of `events.account_id` for the event's code.
 
+## Disk
+
+Every deploy leaves a Docker build cache behind, and the VM's disk is shared with Podium Chasers; a full disk takes both sites down.
+A weekly cron on the hub prunes cache older than a week, which only slows the next build: `0 5 * * 0 docker builder prune -f --filter until=168h >> /home/acbecquet/decision-maker/deploy/logs/prune.log 2>&1`.
+`docker system df` and `df -h /` show where the space went; `docker builder prune -f` clears all unused cache when it is urgent.
+
 ## Client addresses
 
 Caddy appends the real client address to `X-Forwarded-For`; the app reads exactly that last entry (`ADDRESS_HEADER=X-Forwarded-For`, `XFF_DEPTH=1`), so a client cannot spoof its way past the rate limits.
