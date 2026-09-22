@@ -145,6 +145,26 @@ describe('buildReport', () => {
 		expect(report.unexpected).toBeNull();
 	});
 
+	it('refuses a single-choice winner that does not have the most votes, and allows a tie', () => {
+		const other = options.find((o) => o.id !== output.best.optionId)!;
+		const votes = (bestCount: number) =>
+			options.map((o) => ({
+				optionId: o.id,
+				count: o.id === output.best.optionId ? bestCount : o.id === other.id ? 3 : 0
+			}));
+		expect(() => buildReport(output, points, quotable, options, 'single', meta, votes(1))).toThrow(
+			/has the most votes/
+		);
+		expect(
+			buildReport(output, points, quotable, options, 'single', meta, votes(3)).decision?.best
+				.optionId
+		).toBe(output.best.optionId);
+		expect(
+			buildReport(output, points, quotable, options, 'ranked', meta, votes(1)).decision?.best
+				.optionId
+		).toBe(output.best.optionId);
+	});
+
 	it('keeps the decision for a single-choice event', () => {
 		const report = buildReport(output, points, quotable, options, 'single', meta);
 		expect(report.mode).toBe('single');

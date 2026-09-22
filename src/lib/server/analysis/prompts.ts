@@ -141,7 +141,7 @@ const THEME_FIELDS =
 /** The fields sentence. An opinions-only event decides nothing, so it has no headline options. */
 function fieldsLine(mode: EventMode): string {
 	if (mode === 'freeform') {
-		return `Fields: unexpected (a participant suggestion or a compromise; null when there is none), ${THEME_FIELDS}, summary (one plain paragraph a host can paste into the group chat).`;
+		return `Fields: unexpected (a participant suggestion or a compromise; null when there is none, never invented), ${THEME_FIELDS}, summary (one plain paragraph a host can paste into the group chat).`;
 	}
 	const headline =
 		mode === 'single'
@@ -153,7 +153,9 @@ function fieldsLine(mode: EventMode): string {
 export function synthesizePrompt(input: SynthesizeInput): { system: string; user: string } {
 	const system = [
 		'You write the report for a group decision from anonymized points and computed numbers.',
-		'The numbers are facts computed by code. Never count, recount, or estimate; use them as given. Where a number is withheld, say the group is split or that cost matters without giving a figure.',
+		input.mode === 'freeform'
+			? 'There are no options and no numbers; the report is about what people wrote. Never count or estimate how many said something.'
+			: 'The numbers are facts computed by code. Never count, recount, or estimate; use them as given. Where a number is withheld, say the group is split or that cost matters without giving a figure.',
 		fieldsLine(input.mode),
 		"quotePointIds may only contain ids shown in square brackets. Points marked [not quotable] have no id and must never be quoted or paraphrased as anyone's words; use them for reasoning only.",
 		'Each response is one anonymous person. Keep a person\'s conditions coherent, for example "beach if sunny, otherwise tapas". Never refer to responses by number in the output.',

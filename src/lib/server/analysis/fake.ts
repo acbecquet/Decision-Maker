@@ -88,12 +88,12 @@ export function fakeSynthesize(
 			? [
 					{
 						title: 'What came up',
-						summary: `${points.length} ${points.length === 1 ? 'point' : 'points'} came out of the opinions.`,
+						summary: 'The opinions cluster around a few practical points.',
 						quotePointIds: []
 					},
 					{
-						title: 'How many wrote in',
-						summary: `${input.groups.length} of ${input.tallies.approvedCount} responses had something to say.`,
+						title: 'Where they differ',
+						summary: 'Some opinions pull in different directions.',
 						quotePointIds: []
 					},
 					cost

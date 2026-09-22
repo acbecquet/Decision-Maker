@@ -15,7 +15,7 @@ export function copySummary(view: ReportView): string {
 	const r = view.report;
 	const lines = [view.title, '', r.summary];
 	if (r.decision) {
-		const voted = view.mode === 'single';
+		const voted = r.mode === 'single';
 		lines.push(
 			'',
 			`${voted ? 'Winner' : 'Best'}: ${priced(r.decision.best.optionId)}`,

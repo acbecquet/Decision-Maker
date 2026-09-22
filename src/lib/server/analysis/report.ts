@@ -1,6 +1,6 @@
 import { ANALYSIS, RULES } from '$lib/shared/constants';
 import type { Point, ProviderId, Report, ReportUnexpected } from '$lib/shared/report';
-import type { Aggregates, EventMode, OptionView } from '$lib/shared/types';
+import type { Aggregates, EventMode, OptionCount, OptionView } from '$lib/shared/types';
 import type { SynthesizeOutput, SynthesizeOutputFreeform } from './schemas';
 
 export type ReportMeta = {
@@ -22,8 +22,9 @@ const plain = (text: string) => text.replace(/\u2014|\u2013/g, '-');
 
 /**
  * Turns a validated synthesis into the stored report. Quote text is inserted verbatim from stage 1
- * apart from dash normalization, duplicate, unknown, and cost-tagged ids are dropped, and headline
- * options must exist. Throws a plain Error for an unusable answer so the caller can retry the call once.
+ * apart from dash normalization, duplicate, unknown, and cost-tagged ids are dropped, headline
+ * options must exist, and in a single-choice event the winner must be an option with the most
+ * votes. Throws a plain Error for an unusable answer so the caller can retry the call once.
  */
 export function buildReport(
 	output: SynthesizeOutput | SynthesizeOutputFreeform,
@@ -31,7 +32,8 @@ export function buildReport(
 	quotable: Set<string>,
 	options: OptionView[],
 	mode: EventMode,
-	meta: ReportMeta
+	meta: ReportMeta,
+	votes: OptionCount[] = []
 ): Report {
 	const known = new Set(options.map((o) => o.id));
 	/** An opinions-only event decides nothing, so it has no headline options to check. */
@@ -43,6 +45,15 @@ export function buildReport(
 			headline.worst.optionId
 		]) {
 			if (!known.has(id)) throw new Error(`The model referred to an unknown option ${id}`);
+		}
+		if (mode === 'single' && votes.length > 0) {
+			const most = Math.max(...votes.map((v) => v.count));
+			const leaders = votes.filter((v) => v.count === most).map((v) => v.optionId);
+			if (!leaders.includes(headline.best.optionId)) {
+				throw new Error(
+					`The model crowned ${headline.best.optionId} but ${leaders.join(' or ')} has the most votes`
+				);
+			}
 		}
 	}
 	const byId = new Map(points.map((p) => [p.id, p]));

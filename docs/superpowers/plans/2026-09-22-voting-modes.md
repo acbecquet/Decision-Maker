@@ -565,3 +565,14 @@ Expected: all green.
 git add src/lib/server/analysis src/lib/components/ReportView.svelte src/lib/shared/summary.ts src/lib/shared/summary.test.ts src/lib/server/analysis/*.test.ts e2e/modes.e2e.ts
 git commit -m "Make the analysis, the report, and the summary follow the voting mode"
 ```
+
+## Deviations after review
+
+The task reviews changed the code in these ways, and the code is the source of truth over the steps above.
+
+- Task 1: `insertOptions` guards the empty option list an opinions-only event carries, since drizzle refuses an insert with no rows; the server-side mode rule has its own tests in `participants.test.ts`; `buildReport` takes `mode` before `meta`.
+- Task 2: `AnalysisSection` also passes `mode` to the tallies; the create form restores two blank options when the mode leaves opinions only; the close dialog's confirm button is `Close now`; the event page now reloads its view whenever its address changes, which the scenarios had worked around with a reload.
+- Task 3: the opinions-only fake needs three fillers of its own to clear the three-theme minimum, and none of them states a number; the privacy notice names the pick, the ranking, or only the opinion by mode; the publish dialog names what is deleted by mode; an opinions-only host view carries no `Numbers` heading.
+- The report builder refuses a single-choice winner that is not an option with the most votes (ties allowed), so a live model cannot crown the wrong option above the vote chart; the job passes the raw first-choice counts, which are never shown.
+- A two-option event names the runner-up once in the cards and in the copy summary, since it is also the last option; the labels follow the mode the report was generated under, not the event's current mode.
+- Recorded and left alone: the ranked schema's property list has no pin after the refactor; no unit case pins the single-choice tie-break; the live spot-check script does not exercise the opinions-only schema; the fake computes an order in every mode.

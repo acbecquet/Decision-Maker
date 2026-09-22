@@ -19,7 +19,7 @@
 	/** Null in an opinions-only event: there is nothing to pick between, so there are no cards. */
 	const decision = $derived(view.report.decision);
 	const labels = $derived(
-		view.mode === 'single'
+		view.report.mode === 'single'
 			? { best: 'Winner', runnerUp: 'Runner-up', worst: 'Fewest votes' }
 			: { best: 'Best option', runnerUp: 'Runner-up', worst: 'Worst' }
 	);

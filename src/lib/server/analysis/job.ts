@@ -282,7 +282,8 @@ async function runJob(
 				quotableIds(groups),
 				options,
 				event.mode,
-				meta
+				meta,
+				aggregates.firstChoice
 			)
 	);
 
