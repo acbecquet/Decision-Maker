@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { slugify } from './slug';
+import { eventPath, slugify } from './slug';
 
 describe('slugify', () => {
 	it('lowercases, drops accents, and joins words with single hyphens', () => {
@@ -18,5 +18,20 @@ describe('slugify', () => {
 	it('gives nothing for a title with no letters or digits it can keep', () => {
 		expect(slugify('日本語')).toBe('');
 		expect(slugify('---')).toBe('');
+	});
+
+	it('spells the Latin letters that decomposition leaves alone', () => {
+		expect(slugify('Straße Fest')).toBe('strasse-fest');
+		expect(slugify('Æon Flux night')).toBe('aeon-flux-night');
+		expect(slugify('Øl og Łódź')).toBe('ol-og-lodz');
+	});
+});
+
+describe('eventPath', () => {
+	it('adds the slug after the code and leaves it out when empty or reserved', () => {
+		expect(eventPath('abc', 'Axis dinner')).toBe('/e/abc/axis-dinner');
+		expect(eventPath('abc', '日本語')).toBe('/e/abc');
+		expect(eventPath('abc', 'Edit')).toBe('/e/abc');
+		expect(eventPath('abc', 'Édit!')).toBe('/e/abc');
 	});
 });

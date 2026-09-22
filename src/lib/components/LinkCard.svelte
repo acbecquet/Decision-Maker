@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { qrSvg } from '$lib/client/qr';
-	import { slugify } from '$lib/shared/slug';
+	import { eventPath } from '$lib/shared/slug';
 
 	let { code, title }: { code: string; title: string } = $props();
 
-	const slug = $derived(slugify(title));
-	const url = $derived(`${location.origin}/e/${code}${slug ? `/${slug}` : ''}`);
+	const url = $derived(`${page.url.origin}${eventPath(code, title)}`);
 	// The QR code carries the bare link: fewer modules scan more easily, and it lands on the same page.
-	const bare = $derived(`${location.origin}/e/${code}`);
+	const bare = $derived(`${page.url.origin}/e/${code}`);
 	let input: HTMLInputElement | undefined = $state();
 	let status = $state<'idle' | 'copied' | 'failed'>('idle');
 	let shareFailed = $state(false);

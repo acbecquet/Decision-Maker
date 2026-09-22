@@ -224,3 +224,15 @@ Expected: all green.
 git add src/lib/shared/slug.ts src/lib/shared/slug.test.ts src/routes/e src/lib/components/LinkCard.svelte src/lib/components/CreateEvent.svelte src/lib/components/HomeScreen.svelte src/lib/components/LinkScreen.svelte src/routes/auth/openrouter/callback/+page.svelte e2e/preview.e2e.ts e2e/create.e2e.ts
 git commit -m "Carry the event title in the shared link and in the page's own HTML"
 ```
+
+## Deviations after review
+
+The task review changed the code in these ways, and the code is the source of truth over the steps above.
+
+- The three `?created=1` navigations keep `resolve('/e/[code]?created=1', { code })`: with the optional slug as the last segment, `resolve('/e/[code]/[[slug]]?created=1', ...)` renders `/e/<code>/?created=1`, and the lint rule against navigation without `resolve()` rejects composing the query by hand.
+- `eventPath(code, title)` in `src/lib/shared/slug.ts` holds the one rule for the shared path and leaves the segment out when the slug is empty or collides with a sibling route such as `edit`; the server load and the share card both use it.
+- The share card reads the origin from `page.url` rather than `location`, since the page is now server-rendered.
+- `slugify` spells `ß`, `æ`, `ø`, `œ`, `ð`, `þ`, `ł`, and `đ` out before decomposition, so they survive in the link.
+- The preview scenario refuses redirects, so a canonicalising redirect could never pass as a working bare link; it rules out image and site-name tags as well as the description, checks there is exactly one `<title>`, and covers a title that slugifies to `edit`.
+- The QR code encodes the bare link (spec section 6.8).
+- Recorded and left alone: the host's copied link and QR differ by the slug; every client navigation to an event page now costs one small server read for the title.

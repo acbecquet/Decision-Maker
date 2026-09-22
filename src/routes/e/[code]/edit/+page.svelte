@@ -48,6 +48,7 @@
 			code
 		});
 		moveToken(code, next, 'host');
+		// As on the create screen: the search hangs off /e/[code] so the link screen's path stays /e/<code>.
 		await goto(resolve('/e/[code]?created=1', { code: next }), { replaceState: true });
 	}
 </script>
