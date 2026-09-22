@@ -16,7 +16,13 @@
 		moderate: 'Moderate consensus',
 		split: 'Split'
 	} as const;
-	const decision = $derived(view.report.decision!);
+	/** Null in an opinions-only event: there is nothing to pick between, so there are no cards. */
+	const decision = $derived(view.report.decision);
+	const labels = $derived(
+		view.mode === 'single'
+			? { best: 'Winner', runnerUp: 'Runner-up', worst: 'Fewest votes' }
+			: { best: 'Best option', runnerUp: 'Runner-up', worst: 'Worst' }
+	);
 	const published = $derived(
 		view.publishedAt
 			? new Date(view.publishedAt).toLocaleDateString(undefined, {
@@ -35,37 +41,39 @@
 			: 'responses'}{published ? `, published ${published}` : ', draft'}
 	</p>
 
-	<div class="card highlight">
-		<p class="label" style="margin-top:0">Best option</p>
-		<p style="margin:0 0 6px">
-			<strong>{name(decision.best.optionId)}</strong>
-			{#if price(decision.best.optionId)}<span class="muted small"
-					>{price(decision.best.optionId)}</span
-				>{/if}
-		</p>
-		<span class="pill">{consensus[decision.best.consensus]}</span>
-		<p style="margin:10px 0 4px"><strong>{decision.best.verdict}</strong></p>
-		<p style="margin:0">{decision.best.rationale}</p>
-	</div>
+	{#if decision}
+		<div class="card highlight">
+			<p class="label" style="margin-top:0">{labels.best}</p>
+			<p style="margin:0 0 6px">
+				<strong>{name(decision.best.optionId)}</strong>
+				{#if price(decision.best.optionId)}<span class="muted small"
+						>{price(decision.best.optionId)}</span
+					>{/if}
+			</p>
+			<span class="pill">{consensus[decision.best.consensus]}</span>
+			<p style="margin:10px 0 4px"><strong>{decision.best.verdict}</strong></p>
+			<p style="margin:0">{decision.best.rationale}</p>
+		</div>
 
-	<div class="pair">
-		<div class="card">
-			<p class="label" style="margin-top:0">Runner-up</p>
-			<p style="margin:0"><strong>{name(decision.runnerUp.optionId)}</strong></p>
-			{#if price(decision.runnerUp.optionId)}<p class="small muted" style="margin:0 0 6px">
-					{price(decision.runnerUp.optionId)}
-				</p>{/if}
-			<p class="small" style="margin:0">{decision.runnerUp.rationale}</p>
+		<div class="pair">
+			<div class="card">
+				<p class="label" style="margin-top:0">{labels.runnerUp}</p>
+				<p style="margin:0"><strong>{name(decision.runnerUp.optionId)}</strong></p>
+				{#if price(decision.runnerUp.optionId)}<p class="small muted" style="margin:0 0 6px">
+						{price(decision.runnerUp.optionId)}
+					</p>{/if}
+				<p class="small" style="margin:0">{decision.runnerUp.rationale}</p>
+			</div>
+			<div class="card">
+				<p class="label" style="margin-top:0">{labels.worst}</p>
+				<p style="margin:0"><strong>{name(decision.worst.optionId)}</strong></p>
+				{#if price(decision.worst.optionId)}<p class="small muted" style="margin:0 0 6px">
+						{price(decision.worst.optionId)}
+					</p>{/if}
+				<p class="small" style="margin:0">{decision.worst.rationale}</p>
+			</div>
 		</div>
-		<div class="card">
-			<p class="label" style="margin-top:0">Worst</p>
-			<p style="margin:0"><strong>{name(decision.worst.optionId)}</strong></p>
-			{#if price(decision.worst.optionId)}<p class="small muted" style="margin:0 0 6px">
-					{price(decision.worst.optionId)}
-				</p>{/if}
-			<p class="small" style="margin:0">{decision.worst.rationale}</p>
-		</div>
-	</div>
+	{/if}
 
 	{#if view.report.unexpected}
 		<div class="card">
@@ -75,13 +83,15 @@
 		</div>
 	{/if}
 
-	<h2>Numbers</h2>
-	<TalliesView
-		tallies={view.tallies}
-		options={view.options}
-		currency={view.currency}
-		mode={view.mode}
-	/>
+	{#if decision}
+		<h2>Numbers</h2>
+		<TalliesView
+			tallies={view.tallies}
+			options={view.options}
+			currency={view.currency}
+			mode={view.mode}
+		/>
+	{/if}
 
 	<h2>What people said</h2>
 	{#each view.report.themes as theme, i (i)}

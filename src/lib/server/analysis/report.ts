@@ -1,7 +1,7 @@
 import { ANALYSIS, RULES } from '$lib/shared/constants';
-import type { Point, ProviderId, Report } from '$lib/shared/report';
+import type { Point, ProviderId, Report, ReportUnexpected } from '$lib/shared/report';
 import type { Aggregates, EventMode, OptionView } from '$lib/shared/types';
-import type { SynthesizeOutput } from './schemas';
+import type { SynthesizeOutput, SynthesizeOutputFreeform } from './schemas';
 
 export type ReportMeta = {
 	provider: ProviderId;
@@ -26,7 +26,7 @@ const plain = (text: string) => text.replace(/\u2014|\u2013/g, '-');
  * options must exist. Throws a plain Error for an unusable answer so the caller can retry the call once.
  */
 export function buildReport(
-	output: SynthesizeOutput,
+	output: SynthesizeOutput | SynthesizeOutputFreeform,
 	points: Point[],
 	quotable: Set<string>,
 	options: OptionView[],
@@ -34,8 +34,16 @@ export function buildReport(
 	meta: ReportMeta
 ): Report {
 	const known = new Set(options.map((o) => o.id));
-	for (const id of [output.best.optionId, output.runnerUp.optionId, output.worst.optionId]) {
-		if (!known.has(id)) throw new Error(`The model referred to an unknown option ${id}`);
+	/** An opinions-only event decides nothing, so it has no headline options to check. */
+	const headline = mode === 'freeform' || !('best' in output) ? null : output;
+	if (headline) {
+		for (const id of [
+			headline.best.optionId,
+			headline.runnerUp.optionId,
+			headline.worst.optionId
+		]) {
+			if (!known.has(id)) throw new Error(`The model referred to an unknown option ${id}`);
+		}
 	}
 	const byId = new Map(points.map((p) => [p.id, p]));
 	const themes = output.themes.map((t) => ({
@@ -46,9 +54,10 @@ export function buildReport(
 			.slice(0, ANALYSIS.maxQuotesPerTheme)
 			.map((id) => ({ pointId: id, text: plain(byId.get(id)!.text) }))
 	}));
-	let unexpected = output.unexpected;
+	let unexpected: ReportUnexpected = output.unexpected;
 	if (unexpected?.kind === 'option') {
-		unexpected = unexpected.optionId && known.has(unexpected.optionId) ? unexpected : null;
+		unexpected =
+			headline && unexpected.optionId && known.has(unexpected.optionId) ? unexpected : null;
 	} else if (unexpected) {
 		unexpected = { ...unexpected, optionId: null };
 	}
@@ -62,14 +71,14 @@ export function buildReport(
 	return {
 		version: 2,
 		mode,
-		decision: {
+		decision: headline && {
 			best: {
-				...output.best,
-				verdict: plain(output.best.verdict),
-				rationale: plain(output.best.rationale)
+				...headline.best,
+				verdict: plain(headline.best.verdict),
+				rationale: plain(headline.best.rationale)
 			},
-			runnerUp: { ...output.runnerUp, rationale: plain(output.runnerUp.rationale) },
-			worst: { ...output.worst, rationale: plain(output.worst.rationale) }
+			runnerUp: { ...headline.runnerUp, rationale: plain(headline.runnerUp.rationale) },
+			worst: { ...headline.worst, rationale: plain(headline.worst.rationale) }
 		},
 		unexpected,
 		themes,

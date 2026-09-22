@@ -2,7 +2,7 @@ import { RULES } from './constants';
 import { formatMoney } from './money';
 import type { ReportView } from './report';
 
-/** Plain text for the group chat: the paragraph, the four headlines, the cost line, and the footer. */
+/** Plain text for the group chat: the paragraph, the headlines the mode has, the cost line, and the footer. */
 export function copySummary(view: ReportView): string {
 	const option = (id: string) => view.options.find((o) => o.id === id);
 	const name = (id: string) => option(id)?.label ?? 'an option';
@@ -13,18 +13,22 @@ export function copySummary(view: ReportView): string {
 			: `${name(id)} (${formatMoney(cost, view.currency)})`;
 	};
 	const r = view.report;
-	const decision = r.decision!;
-	const lines = [
-		view.title,
-		'',
-		r.summary,
-		'',
-		`Best: ${priced(decision.best.optionId)}`,
-		`Runner-up: ${priced(decision.runnerUp.optionId)}`,
-		`Worst: ${priced(decision.worst.optionId)}`
-	];
-	if (r.unexpected) lines.push(`Unexpected: ${r.unexpected.title}`);
-	const cost = view.tallies.breakdown?.cost;
+	const lines = [view.title, '', r.summary];
+	if (r.decision) {
+		const voted = view.mode === 'single';
+		lines.push(
+			'',
+			`${voted ? 'Winner' : 'Best'}: ${priced(r.decision.best.optionId)}`,
+			`Runner-up: ${priced(r.decision.runnerUp.optionId)}`,
+			`${voted ? 'Fewest votes' : 'Worst'}: ${priced(r.decision.worst.optionId)}`
+		);
+	}
+	if (r.unexpected) {
+		if (!r.decision) lines.push('');
+		lines.push(`Unexpected: ${r.unexpected.title}`);
+	}
+	/** An opinions-only event shows no numbers anywhere, so it has no cost line either. */
+	const cost = view.mode === 'freeform' ? null : view.tallies.breakdown?.cost;
 	if (cost) {
 		const over = cost.rows
 			.filter((row) => row.overBudget !== null && row.overBudget > 0)

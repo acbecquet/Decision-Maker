@@ -38,7 +38,15 @@ const request = (over: Partial<JsonRequest> = {}): JsonRequest => ({
 	maxTokens: 4000,
 	payload: {
 		stage: 'anonymize',
-		input: { options: [], currency: 'EUR', ranking: [], vetoes: [], opinion: '', suggestion: '' }
+		input: {
+			options: [],
+			currency: 'EUR',
+			mode: 'ranked',
+			ranking: [],
+			vetoes: [],
+			opinion: '',
+			suggestion: ''
+		}
 	},
 	...over
 });

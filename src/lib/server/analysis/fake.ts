@@ -2,7 +2,7 @@ import { ProviderError, type ModelProvider } from './contract';
 import type { AnonymizeInput, SynthesizeInput } from './prompts';
 import { ANALYSIS } from '$lib/shared/constants';
 import { sleep } from './retry';
-import type { AnonymizeOutput, SynthesizeOutput } from './schemas';
+import type { AnonymizeOutput, SynthesizeOutput, SynthesizeOutputFreeform } from './schemas';
 
 const COST_WORDS = /afford|budget|expensive|cheap|cost|price|euro|dollar|€|\$|money|pay/i;
 const TYPES = ['reason', 'condition', 'constraint'] as const;
@@ -38,15 +38,23 @@ export function fakeAnonymize(input: AnonymizeInput): AnonymizeOutput {
 	return { points };
 }
 
-/** Deterministic stage 3: Borda order decides the cards, themes come from point types, cost points are never quoted. */
-export function fakeSynthesize(input: SynthesizeInput): SynthesizeOutput {
+/** Deterministic stage 3: the tallies decide the cards, themes come from point types, cost points are never quoted. */
+export function fakeSynthesize(
+	input: SynthesizeInput
+): SynthesizeOutput | SynthesizeOutputFreeform {
 	const ids = input.options.map((o) => o.id);
 	const b = input.tallies.breakdown;
-	const order = b
-		? [...b.borda]
-				.sort((x, y) => y.score - x.score || ids.indexOf(x.optionId) - ids.indexOf(y.optionId))
-				.map((s) => s.optionId)
-		: ids;
+	const voted = input.mode === 'single';
+	const listed = (x: string, y: string) => ids.indexOf(x) - ids.indexOf(y);
+	const order = !b
+		? ids
+		: voted
+			? [...b.firstChoice]
+					.sort((x, y) => y.count - x.count || listed(x.optionId, y.optionId))
+					.map((f) => f.optionId)
+			: [...b.borda]
+					.sort((x, y) => y.score - x.score || listed(x.optionId, y.optionId))
+					.map((s) => s.optionId);
 	const best = order[0] ?? ids[0];
 	const runnerUp = order[1] ?? best;
 	const worst = order[order.length - 1] ?? best;
@@ -69,37 +77,78 @@ export function fakeSynthesize(input: SynthesizeInput): SynthesizeOutput {
 	]
 		.filter(([type]) => ofType(type).length > 0)
 		.map(([type, title, noun]) => theme(type, title, noun));
-	const fillers = [
-		{
-			title: 'Where the group stands',
-			summary: `${name(best)} leads the ranking.`,
-			quotePointIds: []
-		},
-		{ title: 'The fallback', summary: `${name(runnerUp)} is the next best.`, quotePointIds: [] },
-		{ title: 'Cost', summary: costLine.trim() || 'Nobody flagged cost.', quotePointIds: [] }
-	];
+	const cost = {
+		title: 'Cost',
+		summary: costLine.trim() || 'Nobody flagged cost.',
+		quotePointIds: []
+	};
+	/** An opinions-only event has no options, so its fillers name none. */
+	const fillers =
+		input.mode === 'freeform'
+			? [
+					{
+						title: 'What came up',
+						summary: `${points.length} ${points.length === 1 ? 'point' : 'points'} came out of the opinions.`,
+						quotePointIds: []
+					},
+					{
+						title: 'How many wrote in',
+						summary: `${input.groups.length} of ${input.tallies.approvedCount} responses had something to say.`,
+						quotePointIds: []
+					},
+					cost
+				]
+			: [
+					{
+						title: 'Where the group stands',
+						summary: `${name(best)} leads the ranking.`,
+						quotePointIds: []
+					},
+					{
+						title: 'The fallback',
+						summary: `${name(runnerUp)} is the next best.`,
+						quotePointIds: []
+					},
+					cost
+				];
 	while (themes.length < 3) themes.push(fillers[themes.length]);
+	const unexpected = ofType('suggestion').length
+		? {
+				kind: 'suggestion' as const,
+				optionId: null,
+				title: 'A suggestion from the group',
+				rationale: 'Someone proposed an option not on the list.'
+			}
+		: null;
+	const stillToSettle = ofType('condition').length
+		? ['The conditions people attached to their choices.']
+		: [];
+	if (input.mode === 'freeform') {
+		return {
+			unexpected,
+			themes,
+			stillToSettle,
+			summary: `The group's opinions cluster around ${themes[0].title.toLowerCase()}.`
+		};
+	}
 	return {
 		best: {
 			optionId: best,
 			verdict: `${name(best)} is the pick.`,
-			rationale: 'It scores highest across the rankings.',
+			rationale: voted ? 'It has the most votes.' : 'It scores highest across the rankings.',
 			consensus: b?.condorcetWinner === best ? 'strong' : 'moderate'
 		},
-		runnerUp: { optionId: runnerUp, rationale: 'The next best score.' },
-		worst: { optionId: worst, rationale: 'Ranked lowest overall.' },
-		unexpected: ofType('suggestion').length
-			? {
-					kind: 'suggestion',
-					optionId: null,
-					title: 'A suggestion from the group',
-					rationale: 'Someone proposed an option not on the list.'
-				}
-			: null,
+		runnerUp: {
+			optionId: runnerUp,
+			rationale: voted ? 'The next most votes.' : 'The next best score.'
+		},
+		worst: {
+			optionId: worst,
+			rationale: voted ? 'It has the fewest votes.' : 'Ranked lowest overall.'
+		},
+		unexpected,
 		themes,
-		stillToSettle: ofType('condition').length
-			? ['The conditions people attached to their choices.']
-			: [],
+		stillToSettle,
 		summary: `The group leans toward ${name(best)}, with ${name(runnerUp)} as the fallback.${costLine}`
 	};
 }

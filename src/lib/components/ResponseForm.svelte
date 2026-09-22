@@ -90,7 +90,7 @@
 </script>
 
 <form onsubmit={submit} novalidate>
-	<PrivacyNotice />
+	<PrivacyNotice mode={event.mode} />
 
 	{#if mine}
 		<p class="label">Your name</p>

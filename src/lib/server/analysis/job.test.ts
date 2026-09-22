@@ -81,13 +81,13 @@ describe('startAnalysis', () => {
 		const after = getEventById(db, event.id);
 		expect(after.provider).toBe('fake');
 		expect(after.model).toBe('fake-fast');
-		expect(after.promptVersion).toBe('v1');
+		expect(after.promptVersion).toBe('v2');
 		expect(after.report).toMatchObject({
 			version: 2,
 			mode: 'ranked',
 			provider: 'fake',
 			model: 'fake-fast',
-			promptVersion: 'v1'
+			promptVersion: 'v2'
 		});
 		expect(JSON.stringify(after.report)).not.toContain('SENTINEL');
 		const points = db

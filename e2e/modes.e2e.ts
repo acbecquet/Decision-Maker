@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newDevice, optionIds, submitApi, token } from './helpers';
+import { newDevice, openAsParticipant, optionIds, submitApi, token } from './helpers';
 
 test.describe('single choice', () => {
 	test('a host creates a yes or no event, people pick one, and the tallies show votes', async ({
@@ -26,7 +26,8 @@ test.describe('single choice', () => {
 		await expect(phone.page.getByRole('alert')).toHaveText('Pick one option');
 		await phone.page.getByRole('radio', { name: 'Yes' }).check();
 		await phone.page.getByRole('button', { name: 'Submit' }).click();
-		await expect(phone.page.getByText('Your pick')).toBeVisible();
+		await expect(phone.page.getByRole('heading', { name: 'Thanks, Ana' })).toBeVisible();
+		await expect(phone.page.getByText('Your pick', { exact: true })).toBeVisible();
 		await expect(phone.page.getByText('Yes', { exact: true })).toBeVisible();
 		await phone.context.close();
 
@@ -68,6 +69,37 @@ test.describe('single choice', () => {
 			0
 		);
 		await expect(host.page.getByRole('heading', { name: "Won't work for" })).toHaveCount(0);
+
+		await host.page.getByRole('tab', { name: 'Fake (demo)' }).click();
+		await expect(host.page.getByLabel('Model')).toHaveValue('fake-fast');
+		await host.page.getByRole('button', { name: 'Run analysis' }).click();
+		const report = host.page.getByTestId('report');
+		await expect(report).toBeVisible({ timeout: 20_000 });
+		const winner = report.locator('.card.highlight');
+		await expect(winner).toContainText('Winner');
+		await expect(winner).toContainText('Yes');
+		await expect(report).not.toContainText('Best option');
+		await expect(report.getByRole('heading', { name: 'Numbers' })).toHaveCount(1);
+		await expect(report.getByRole('heading', { name: 'Votes' })).toBeVisible();
+		await expect(report.getByRole('heading', { name: 'Where each option ranked' })).toHaveCount(0);
+
+		await host.page.getByRole('button', { name: 'Publish' }).click();
+		await expect(host.page.getByRole('dialog')).toContainText('Publish results?');
+		await host.page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
+		await expect(host.page.getByText('Published', { exact: true })).toBeVisible();
+
+		await host.context.grantPermissions(['clipboard-read', 'clipboard-write']);
+		await host.page.getByRole('button', { name: 'Copy summary' }).click();
+		await expect(host.page.getByRole('button', { name: 'Copied' })).toBeVisible();
+		const summary = await host.page.evaluate(() => navigator.clipboard.readText());
+		expect(summary).toContain('Winner: Yes');
+		expect(summary).not.toContain('Best:');
+
+		const guest = await openAsParticipant(browser, code, token());
+		await expect(guest.page.getByTestId('report')).toBeVisible();
+		await expect(guest.page.getByTestId('report')).toContainText('Winner');
+		await expect(guest.page.getByRole('button', { name: 'Copy summary' })).toHaveCount(0);
+		await guest.context.close();
 		await host.context.close();
 	});
 });
@@ -96,7 +128,8 @@ test.describe('opinions only', () => {
 		await expect(phone.page.getByRole('alert')).toHaveText('Write your opinion');
 		await phone.page.getByLabel('Your opinion').fill('Split it evenly, it is simpler.');
 		await phone.page.getByRole('button', { name: 'Submit' }).click();
-		await expect(phone.page.getByText('Your opinion')).toBeVisible();
+		await expect(phone.page.getByRole('heading', { name: 'Thanks, Ana' })).toBeVisible();
+		await expect(phone.page.getByText('Your opinion', { exact: true })).toBeVisible();
 		await expect(phone.page.getByText('Your ranking')).toHaveCount(0);
 		await phone.context.close();
 
@@ -126,6 +159,35 @@ test.describe('opinions only', () => {
 		await expect(host.page.getByRole('heading', { name: 'First choices' })).toHaveCount(0);
 		await expect(host.page.getByRole('heading', { name: 'Votes' })).toHaveCount(0);
 		await expect(host.page.getByText(/Numbers appear once/)).toHaveCount(0);
+
+		await host.page.getByRole('tab', { name: 'Fake (demo)' }).click();
+		await expect(host.page.getByLabel('Model')).toHaveValue('fake-fast');
+		await host.page.getByRole('button', { name: 'Run analysis' }).click();
+		const report = host.page.getByTestId('report');
+		await expect(report).toBeVisible({ timeout: 20_000 });
+		await expect(report).not.toContainText('Winner');
+		await expect(report).not.toContainText('Best option');
+		await expect(host.page.getByRole('heading', { name: 'Numbers' })).toHaveCount(0);
+		await expect(report).toContainText('What people said');
+		await expect(report.locator('blockquote').first()).toBeVisible();
+
+		await host.page.getByRole('button', { name: 'Publish' }).click();
+		await expect(host.page.getByRole('dialog')).toContainText('Publish results?');
+		await host.page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
+		await expect(host.page.getByText('Published', { exact: true })).toBeVisible();
+
+		await host.context.grantPermissions(['clipboard-read', 'clipboard-write']);
+		await host.page.getByRole('button', { name: 'Copy summary' }).click();
+		await expect(host.page.getByRole('button', { name: 'Copied' })).toBeVisible();
+		const summary = await host.page.evaluate(() => navigator.clipboard.readText());
+		expect(summary).not.toContain('Best:');
+		expect(summary).not.toContain('Winner:');
+		expect(summary).toContain('5 responses.');
+
+		const guest = await openAsParticipant(browser, code, token());
+		await expect(guest.page.getByTestId('report')).toBeVisible();
+		await expect(guest.page.getByTestId('report')).toContainText('What people said');
+		await guest.context.close();
 		await host.context.close();
 	});
 });

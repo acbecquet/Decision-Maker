@@ -8,7 +8,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { ThinkingEffort } from '$lib/shared/report';
-import { anonymizePrompt, synthesizePrompt, type SynthesizeInput } from '../prompts';
+import {
+	anonymizePrompt,
+	synthesizePrompt,
+	type AnonymizeInput,
+	type SynthesizeInput
+} from '../prompts';
 import { ANONYMIZE_SCHEMA, SYNTHESIZE_SCHEMA, anonymizeOutput, synthesizeOutput } from '../schemas';
 import { createOpenRouterProvider } from './openrouter';
 
@@ -33,9 +38,10 @@ describe.skipIf(!keyFile)('live OpenRouter spot-check', () => {
 	}, 60_000);
 
 	it('anonymizes an opinion into typed points without echoing it', async () => {
-		const input = {
+		const input: AnonymizeInput = {
 			options,
 			currency: 'EUR',
+			mode: 'ranked',
 			ranking: ['o2', 'o1'],
 			vetoes: ['o3'],
 			opinion:
@@ -68,6 +74,7 @@ describe.skipIf(!keyFile)('live OpenRouter spot-check', () => {
 			title: 'Saturday night in Barcelona',
 			context: 'Dinner plans for the group',
 			currency: 'EUR',
+			mode: 'ranked',
 			options,
 			tallies: {
 				approvedCount: 6,

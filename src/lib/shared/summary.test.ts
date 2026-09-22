@@ -93,4 +93,41 @@ describe('copySummary', () => {
 		expect(copySummary(few)).toContain('3 responses.');
 		expect(copySummary(few)).not.toContain('Cost:');
 	});
+
+	it('reads as votes in a single-choice event', () => {
+		const single: ReportView = {
+			...view,
+			mode: 'single',
+			report: { ...view.report, mode: 'single' }
+		};
+		const text = copySummary(single);
+		expect(text).toContain('Winner: Tapas crawl (€25)');
+		expect(text).toContain('Runner-up: Beach BBQ (€15)');
+		expect(text).toContain('Fewest votes: Paella class');
+		expect(text).not.toContain('Best:');
+		expect(text).not.toContain('Worst:');
+	});
+
+	it('is the paragraph, the unexpected line, and the footer in an opinions-only event', () => {
+		const freeform: ReportView = {
+			...view,
+			mode: 'freeform',
+			options: [],
+			tallies: { approvedCount: 5, breakdown: null },
+			report: { ...view.report, mode: 'freeform', decision: null }
+		};
+		expect(copySummary(freeform)).toBe(
+			[
+				'Saturday night',
+				'',
+				'The group leans toward tapas.',
+				'',
+				'Unexpected: A flamenco show',
+				'',
+				'5 responses. Opinions were rewritten by AI to protect anonymity.'
+			].join('\n')
+		);
+		expect(copySummary(freeform)).not.toContain('Best:');
+		expect(copySummary(freeform)).not.toContain('Winner:');
+	});
 });

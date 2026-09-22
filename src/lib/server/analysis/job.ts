@@ -21,9 +21,9 @@ import { readApprovedResponses, type ApprovedResponse } from './responses';
 import { withRetry } from './retry';
 import {
 	ANONYMIZE_SCHEMA,
-	SYNTHESIZE_SCHEMA,
 	anonymizeOutput,
-	synthesizeOutput,
+	synthesizeOutputFor,
+	synthesizeSchemaFor,
 	type AnonymizeOutput
 } from './schemas';
 
@@ -217,6 +217,7 @@ async function runJob(
 					input: {
 						options,
 						currency: event.currency,
+						mode: event.mode,
 						ranking: r.ranking,
 						vetoes: r.vetoes,
 						opinion: r.opinion,
@@ -264,6 +265,7 @@ async function runJob(
 				title: event.title,
 				context: event.context,
 				currency: event.currency,
+				mode: event.mode,
 				options,
 				tallies: presentTallies(aggregates),
 				costMattersToSome: costMattersToSome(aggregates),
@@ -271,11 +273,11 @@ async function runJob(
 			}
 		},
 		'synthesize',
-		SYNTHESIZE_SCHEMA,
+		synthesizeSchemaFor(event.mode),
 		MAX_TOKENS.synthesize,
 		(raw) =>
 			buildReport(
-				synthesizeOutput.parse(raw),
+				synthesizeOutputFor(event.mode).parse(raw),
 				points,
 				quotableIds(groups),
 				options,

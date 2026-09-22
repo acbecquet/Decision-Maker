@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ANALYSIS } from '$lib/shared/constants';
+import type { EventMode } from '$lib/shared/types';
 
 export type JsonSchema = Record<string, unknown>;
 
@@ -35,6 +36,45 @@ const optionRef = (extra: Record<string, unknown>) => ({
 	additionalProperties: false
 });
 
+const unexpectedSchema = (kinds: readonly string[]) => ({
+	anyOf: [
+		{
+			type: 'object',
+			properties: {
+				kind: { type: 'string', enum: [...kinds] },
+				optionId: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+				title: { type: 'string' },
+				rationale: { type: 'string' }
+			},
+			required: ['kind', 'optionId', 'title', 'rationale'],
+			additionalProperties: false
+		},
+		{ type: 'null' }
+	]
+});
+
+/** What every mode reports: what the group said, what is left open, and the paragraph. */
+const SYNTHESIZE_THEMES: Record<string, unknown> = {
+	themes: {
+		type: 'array',
+		items: {
+			type: 'object',
+			properties: {
+				title: { type: 'string' },
+				summary: { type: 'string' },
+				quotePointIds: {
+					...stringArray,
+					description: 'Up to three ids from the quotable points.'
+				}
+			},
+			required: ['title', 'summary', 'quotePointIds'],
+			additionalProperties: false
+		}
+	},
+	stillToSettle: stringArray,
+	summary: { type: 'string', description: 'One plain paragraph for the group chat.' }
+};
+
 export const SYNTHESIZE_SCHEMA: JsonSchema = {
 	type: 'object',
 	properties: {
@@ -45,44 +85,26 @@ export const SYNTHESIZE_SCHEMA: JsonSchema = {
 		}),
 		runnerUp: optionRef({ rationale: { type: 'string' } }),
 		worst: optionRef({ rationale: { type: 'string', description: 'Factual, not harsh.' } }),
-		unexpected: {
-			anyOf: [
-				{
-					type: 'object',
-					properties: {
-						kind: { type: 'string', enum: ['option', 'suggestion', 'compromise'] },
-						optionId: { anyOf: [{ type: 'string' }, { type: 'null' }] },
-						title: { type: 'string' },
-						rationale: { type: 'string' }
-					},
-					required: ['kind', 'optionId', 'title', 'rationale'],
-					additionalProperties: false
-				},
-				{ type: 'null' }
-			]
-		},
-		themes: {
-			type: 'array',
-			items: {
-				type: 'object',
-				properties: {
-					title: { type: 'string' },
-					summary: { type: 'string' },
-					quotePointIds: {
-						...stringArray,
-						description: 'Up to three ids from the quotable points.'
-					}
-				},
-				required: ['title', 'summary', 'quotePointIds'],
-				additionalProperties: false
-			}
-		},
-		stillToSettle: stringArray,
-		summary: { type: 'string', description: 'One plain paragraph for the group chat.' }
+		unexpected: unexpectedSchema(['option', 'suggestion', 'compromise']),
+		...SYNTHESIZE_THEMES
 	},
 	required: ['best', 'runnerUp', 'worst', 'unexpected', 'themes', 'stillToSettle', 'summary'],
 	additionalProperties: false
 };
+
+/** An opinions-only event has no options, so no decision and no unexpected option either. */
+export const SYNTHESIZE_SCHEMA_FREEFORM: JsonSchema = {
+	type: 'object',
+	properties: {
+		unexpected: unexpectedSchema(['suggestion', 'compromise']),
+		...SYNTHESIZE_THEMES
+	},
+	required: ['unexpected', 'themes', 'stillToSettle', 'summary'],
+	additionalProperties: false
+};
+
+export const synthesizeSchemaFor = (mode: EventMode): JsonSchema =>
+	mode === 'freeform' ? SYNTHESIZE_SCHEMA_FREEFORM : SYNTHESIZE_SCHEMA;
 
 /** Throws when any object in the schema tree is not strict. Used by tests. */
 export function assertStrict(schema: unknown, path = '$'): void {
@@ -120,6 +142,21 @@ export const anonymizeOutput = z.object({
 	)
 });
 
+const synthesizeThemes = {
+	themes: z
+		.array(
+			z.object({
+				title: nonEmpty,
+				summary: nonEmpty,
+				quotePointIds: z.array(z.string()).max(ANALYSIS.maxQuotesPerTheme)
+			})
+		)
+		.min(ANALYSIS.minThemes)
+		.max(ANALYSIS.maxThemes),
+	stillToSettle: z.array(nonEmpty),
+	summary: nonEmpty
+};
+
 export const synthesizeOutput = z.object({
 	best: z.object({
 		optionId: nonEmpty,
@@ -137,19 +174,24 @@ export const synthesizeOutput = z.object({
 			rationale: nonEmpty
 		})
 		.nullable(),
-	themes: z
-		.array(
-			z.object({
-				title: nonEmpty,
-				summary: nonEmpty,
-				quotePointIds: z.array(z.string()).max(ANALYSIS.maxQuotesPerTheme)
-			})
-		)
-		.min(ANALYSIS.minThemes)
-		.max(ANALYSIS.maxThemes),
-	stillToSettle: z.array(nonEmpty),
-	summary: nonEmpty
+	...synthesizeThemes
+});
+
+export const synthesizeOutputFreeform = z.object({
+	unexpected: z
+		.object({
+			kind: z.enum(['suggestion', 'compromise']),
+			optionId: z.string().nullable(),
+			title: nonEmpty,
+			rationale: nonEmpty
+		})
+		.nullable(),
+	...synthesizeThemes
 });
 
 export type AnonymizeOutput = z.infer<typeof anonymizeOutput>;
 export type SynthesizeOutput = z.infer<typeof synthesizeOutput>;
+export type SynthesizeOutputFreeform = z.infer<typeof synthesizeOutputFreeform>;
+
+export const synthesizeOutputFor = (mode: EventMode) =>
+	mode === 'freeform' ? synthesizeOutputFreeform : synthesizeOutput;

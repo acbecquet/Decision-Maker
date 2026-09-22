@@ -33,6 +33,18 @@ const output = {
 	summary: 'Tapas it is.'
 };
 
+const freeformOutput = {
+	unexpected: {
+		kind: 'suggestion' as const,
+		optionId: null,
+		title: 'Split by item',
+		rationale: 'Two asked.'
+	},
+	themes: output.themes,
+	stillToSettle: output.stillToSettle,
+	summary: output.summary
+};
+
 describe('buildReport', () => {
 	it('embeds quote text, dedupes ids, and drops cost-tagged or unknown ids', () => {
 		const report = buildReport(output, points, quotable, options, 'ranked', meta);
@@ -113,6 +125,31 @@ describe('buildReport', () => {
 				meta
 			)
 		).toThrow(/unknown option/);
+	});
+
+	it('leaves an opinions-only report without a decision', () => {
+		const report = buildReport(freeformOutput, points, quotable, [], 'freeform', meta);
+		expect(report.version).toBe(2);
+		expect(report.mode).toBe('freeform');
+		expect(report.decision).toBeNull();
+		expect(report.summary).toBe('Tapas it is.');
+		expect(report.themes[1].quotes).toEqual([
+			{ pointId: 'p3', text: 'The beach only works if dry.' }
+		]);
+		expect(report.unexpected?.kind).toBe('suggestion');
+	});
+
+	it('ignores a decision and an unexpected option in an opinions-only report', () => {
+		const report = buildReport(output, points, quotable, options, 'freeform', meta);
+		expect(report.decision).toBeNull();
+		expect(report.unexpected).toBeNull();
+	});
+
+	it('keeps the decision for a single-choice event', () => {
+		const report = buildReport(output, points, quotable, options, 'single', meta);
+		expect(report.mode).toBe('single');
+		expect(report.decision?.best.optionId).toBe('o1');
+		expect(report.decision?.worst.optionId).toBe('o2');
 	});
 });
 

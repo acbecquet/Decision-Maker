@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fakeAnonymize, fakeProvider, fakeSynthesize } from './fake';
 import { getProvider, isFakeProviderAllowed, listProviders } from './provider';
-import { anonymizeOutput, synthesizeOutput } from './schemas';
+import { anonymizeOutput, synthesizeOutput, synthesizeOutputFreeform } from './schemas';
 import type { SynthesizeInput } from './prompts';
 
 const options = [
@@ -39,6 +39,7 @@ describe('fakeAnonymize', () => {
 		const out = fakeAnonymize({
 			options,
 			currency: 'EUR',
+			mode: 'ranked',
 			ranking: ['o1', 'o2'],
 			vetoes: [],
 			opinion: 'SENTINEL central is key. I cannot afford the rooftop! Sunday flight is early.',
@@ -60,6 +61,7 @@ describe('fakeAnonymize', () => {
 		const out = fakeAnonymize({
 			options,
 			currency: 'EUR',
+			mode: 'ranked',
 			ranking: [],
 			vetoes: [],
 			opinion: '  ',
@@ -74,6 +76,7 @@ describe('fakeSynthesize', () => {
 		title: 'Saturday night',
 		context: '',
 		currency: 'EUR',
+		mode: 'ranked',
 		options,
 		tallies: {
 			approvedCount: 5,
@@ -113,8 +116,9 @@ describe('fakeSynthesize', () => {
 	};
 
 	it('ranks by Borda, never quotes cost points, and validates against the schema', () => {
-		const out = fakeSynthesize(input);
-		expect(synthesizeOutput.safeParse(out).success).toBe(true);
+		const raw = fakeSynthesize(input);
+		expect(synthesizeOutput.safeParse(raw).success).toBe(true);
+		const out = synthesizeOutput.parse(raw);
 		expect(out.best).toMatchObject({ optionId: 'o2', consensus: 'strong' });
 		expect(out.runnerUp.optionId).toBe('o1');
 		expect(out.worst.optionId).toBe('o3');
@@ -126,10 +130,41 @@ describe('fakeSynthesize', () => {
 	});
 
 	it('falls back to option order below the breakdown threshold', () => {
-		const out = fakeSynthesize({ ...input, tallies: { approvedCount: 3, breakdown: null } });
+		const out = synthesizeOutput.parse(
+			fakeSynthesize({ ...input, tallies: { approvedCount: 3, breakdown: null } })
+		);
 		expect(out.best.optionId).toBe('o1');
 		expect(out.worst.optionId).toBe('o3');
 		expect(out.best.consensus).toBe('moderate');
+	});
+
+	it('picks by votes in a single-choice event and decides nothing in an opinions-only one', () => {
+		const votes = synthesizeOutput.parse(
+			fakeSynthesize({
+				...input,
+				mode: 'single',
+				tallies: {
+					approvedCount: 5,
+					breakdown: {
+						...input.tallies.breakdown!,
+						firstChoice: [
+							{ optionId: 'o1', count: 1 },
+							{ optionId: 'o2', count: 0 },
+							{ optionId: 'o3', count: 4 }
+						]
+					}
+				}
+			})
+		);
+		expect(votes.best.optionId).toBe('o3');
+		expect(votes.runnerUp.optionId).toBe('o1');
+		expect(votes.worst.optionId).toBe('o2');
+		const opinions = synthesizeOutputFreeform.parse(
+			fakeSynthesize({ ...input, mode: 'freeform', options: [] })
+		);
+		expect(opinions).not.toHaveProperty('best');
+		expect(opinions.themes.length).toBeGreaterThanOrEqual(3);
+		expect(opinions.summary).toContain('cluster around');
 	});
 });
 
@@ -151,6 +186,7 @@ describe('fakeProvider', () => {
 				input: {
 					options,
 					currency: 'EUR',
+					mode: 'ranked',
 					ranking: ['o3'],
 					vetoes: [],
 					opinion: 'Fun.',
@@ -171,7 +207,15 @@ describe('fakeProvider', () => {
 				maxTokens: 10,
 				payload: {
 					stage: 'anonymize',
-					input: { options, currency: 'EUR', ranking: [], vetoes: [], opinion: 'x', suggestion: '' }
+					input: {
+						options,
+						currency: 'EUR',
+						mode: 'ranked',
+						ranking: [],
+						vetoes: [],
+						opinion: 'x',
+						suggestion: ''
+					}
 				}
 			})
 		).rejects.toThrow(/told to fail/);
