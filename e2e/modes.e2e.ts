@@ -85,6 +85,7 @@ test.describe('single choice', () => {
 
 		await host.page.getByRole('button', { name: 'Publish' }).click();
 		await expect(host.page.getByRole('dialog')).toContainText('Publish results?');
+		await expect(host.page.getByRole('dialog')).toContainText('Raw picks and opinions are deleted');
 		await host.page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
 		await expect(host.page.getByText('Published', { exact: true })).toBeVisible();
 
@@ -173,6 +174,7 @@ test.describe('opinions only', () => {
 
 		await host.page.getByRole('button', { name: 'Publish' }).click();
 		await expect(host.page.getByRole('dialog')).toContainText('Publish results?');
+		await expect(host.page.getByRole('dialog')).toContainText('Raw opinions are deleted');
 		await host.page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
 		await expect(host.page.getByText('Published', { exact: true })).toBeVisible();
 

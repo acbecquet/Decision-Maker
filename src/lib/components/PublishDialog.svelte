@@ -1,5 +1,17 @@
 <script lang="ts">
-	let { onconfirm, message }: { onconfirm: () => Promise<boolean>; message?: string } = $props();
+	import type { EventMode } from '$lib/shared/types';
+
+	let {
+		onconfirm,
+		message,
+		mode
+	}: { onconfirm: () => Promise<boolean>; message?: string; mode: EventMode } = $props();
+
+	const deleted = {
+		ranked: 'Raw rankings and opinions are deleted',
+		single: 'Raw picks and opinions are deleted',
+		freeform: 'Raw opinions are deleted'
+	} as const;
 
 	let dialog: HTMLDialogElement | undefined = $state();
 	let busy = $state(false);
@@ -25,7 +37,7 @@
 
 <dialog bind:this={dialog} aria-labelledby="publish-dialog-title">
 	<h2 id="publish-dialog-title" style="margin-top:0">Publish results?</h2>
-	<p>Raw rankings and opinions are deleted, and anyone with the link sees the report.</p>
+	<p>{deleted[mode]}, and anyone with the link sees the report.</p>
 	<div class="stack">
 		<button type="button" class="btn-primary btn-block" disabled={busy} onclick={confirm}
 			>Publish</button

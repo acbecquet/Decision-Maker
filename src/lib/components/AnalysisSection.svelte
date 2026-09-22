@@ -72,10 +72,17 @@
 		<button type="button" onclick={() => (rerun = true)}>Run again</button>
 		<button type="button" class="btn-primary" onclick={() => publishDialog?.open()}>Publish</button>
 	</div>
-	<PublishDialog bind:this={publishDialog} onconfirm={publish} message={publishError} />
+	<PublishDialog
+		bind:this={publishDialog}
+		onconfirm={publish}
+		message={publishError}
+		mode={view.event.mode}
+	/>
 {:else}
 	{#if hasDraft && view.host?.tallies}
-		<h2>Numbers</h2>
+		{#if view.event.mode !== 'freeform'}
+			<h2>Numbers</h2>
+		{/if}
 		<TalliesView
 			tallies={view.host.tallies}
 			options={view.event.options}

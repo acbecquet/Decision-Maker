@@ -188,7 +188,9 @@
 	<Roster roster={host.roster} readonly={false} onstatus={setStatus} />
 {:else if host}
 	{#if !host.hasDraft && event.state !== 'published'}
-		<h2>Numbers</h2>
+		{#if event.mode !== 'freeform'}
+			<h2>Numbers</h2>
+		{/if}
 		{#if host.tallies}
 			<TalliesView
 				tallies={host.tallies}
