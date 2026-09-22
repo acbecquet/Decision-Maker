@@ -19,9 +19,12 @@ export function copySummary(view: ReportView): string {
 		lines.push(
 			'',
 			`${voted ? 'Winner' : 'Best'}: ${priced(r.decision.best.optionId)}`,
-			`Runner-up: ${priced(r.decision.runnerUp.optionId)}`,
-			`${voted ? 'Fewest votes' : 'Worst'}: ${priced(r.decision.worst.optionId)}`
+			`Runner-up: ${priced(r.decision.runnerUp.optionId)}`
 		);
+		// With two options the runner-up is also the last one, and one line says it once.
+		if (r.decision.worst.optionId !== r.decision.runnerUp.optionId) {
+			lines.push(`${voted ? 'Fewest votes' : 'Worst'}: ${priced(r.decision.worst.optionId)}`);
+		}
 	}
 	if (r.unexpected) {
 		if (!r.decision) lines.push('');

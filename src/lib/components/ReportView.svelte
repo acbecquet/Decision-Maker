@@ -55,7 +55,8 @@
 			<p style="margin:0">{decision.best.rationale}</p>
 		</div>
 
-		<div class="pair">
+		{@const lastIsRunnerUp = decision.worst.optionId === decision.runnerUp.optionId}
+		<div class={lastIsRunnerUp ? '' : 'pair'}>
 			<div class="card">
 				<p class="label" style="margin-top:0">{labels.runnerUp}</p>
 				<p style="margin:0"><strong>{name(decision.runnerUp.optionId)}</strong></p>
@@ -64,14 +65,16 @@
 					</p>{/if}
 				<p class="small" style="margin:0">{decision.runnerUp.rationale}</p>
 			</div>
-			<div class="card">
-				<p class="label" style="margin-top:0">{labels.worst}</p>
-				<p style="margin:0"><strong>{name(decision.worst.optionId)}</strong></p>
-				{#if price(decision.worst.optionId)}<p class="small muted" style="margin:0 0 6px">
-						{price(decision.worst.optionId)}
-					</p>{/if}
-				<p class="small" style="margin:0">{decision.worst.rationale}</p>
-			</div>
+			{#if !lastIsRunnerUp}
+				<div class="card">
+					<p class="label" style="margin-top:0">{labels.worst}</p>
+					<p style="margin:0"><strong>{name(decision.worst.optionId)}</strong></p>
+					{#if price(decision.worst.optionId)}<p class="small muted" style="margin:0 0 6px">
+							{price(decision.worst.optionId)}
+						</p>{/if}
+					<p class="small" style="margin:0">{decision.worst.rationale}</p>
+				</div>
+			{/if}
 		</div>
 	{/if}
 

@@ -108,6 +108,27 @@ describe('copySummary', () => {
 		expect(text).not.toContain('Worst:');
 	});
 
+	it('names the last option once when it is also the runner-up', () => {
+		const two: ReportView = {
+			...view,
+			mode: 'single',
+			report: {
+				...view.report,
+				mode: 'single',
+				decision: {
+					...view.report.decision!,
+					worst: {
+						...view.report.decision!.worst,
+						optionId: view.report.decision!.runnerUp.optionId
+					}
+				}
+			}
+		};
+		const text = copySummary(two);
+		expect(text).toContain('Runner-up: Beach BBQ (€15)');
+		expect(text).not.toContain('Fewest votes');
+	});
+
 	it('is the paragraph, the unexpected line, and the footer in an opinions-only event', () => {
 		const freeform: ReportView = {
 			...view,
